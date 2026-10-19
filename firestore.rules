@@ -4,21 +4,24 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function hasProf() { return exists(/databases/$(db)/documents/users/$(request.auth.uid)); }
     function prof() { return get(/databases/$(db)/documents/users/$(request.auth.uid)).data; }
-    // කාර්යාලයේ ඊමේල් ලිපිනය මෙහි ද දමන්න (index.html හි ADMINS හා සමාන)
     function isAdmin() {
-      return signedIn() && (request.auth.token.email in ['office@example.com']
+      return signedIn() && (request.auth.token.email in ['sudanchamalka@gmail.com']
         || (hasProf() && prof().role == 'admin'));
     }
     function myClass() {
       return signedIn() && hasProf() && prof().role == 'teacher' ? prof().classId : '#none';
+    }
+    function myUnits() {
+      return signedIn() && hasProf() && prof().role == 'teacher' && 'units' in prof() ? prof().units : [];
     }
 
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow write: if isAdmin();
     }
+    // පන්ති සිසුන්: පන්ති භාර ගුරුවරයාට තම පන්තිය; ඒකක ගුරුවරුන්ට (සිසුන් තේරීමට) සියලු පන්ති කියවීම පමණි
     match /students/{id} {
-      allow read: if isAdmin() || resource.data.classId == myClass();
+      allow read: if isAdmin() || resource.data.classId == myClass() || myUnits().size() > 0;
       allow create: if isAdmin() || request.resource.data.classId == myClass();
       allow update, delete: if isAdmin() || resource.data.classId == myClass();
     }
@@ -26,6 +29,20 @@ service cloud.firestore {
       allow read: if isAdmin() || resource.data.classId == myClass();
       allow create, update: if request.resource.data.classId == myClass()
                             && id == request.resource.data.classId + '_' + request.resource.data.date;
+      allow delete: if isAdmin();
+    }
+    // විෂය ඒකක: ඒකකයේ සිසුන් ලැයිස්තුව
+    match /unitStudents/{id} {
+      allow read: if isAdmin() || resource.data.unitId in myUnits();
+      allow create, update: if isAdmin() || (request.resource.data.unitId in myUnits()
+                            && id == request.resource.data.unitId + '_' + request.resource.data.studentId);
+      allow delete: if isAdmin() || resource.data.unitId in myUnits();
+    }
+    // විෂය ඒකක: කාලච්ඡේද පැමිණීම
+    match /unitAtt/{id} {
+      allow read: if isAdmin() || resource.data.unitId in myUnits();
+      allow create, update: if request.resource.data.unitId in myUnits()
+                            && id == request.resource.data.unitId + '_' + request.resource.data.date + '_' + string(request.resource.data.period) + '_' + request.resource.data.classId;
       allow delete: if isAdmin();
     }
   }

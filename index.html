@@ -109,6 +109,10 @@ header{padding:6px 14px}header span{font-size:13px;opacity:.9}
 .banner h1{font:800 clamp(21px,5.6vw,34px)/1.25 "Abhaya Libre","Noto Sans Sinhala",serif;margin:10px 0 2px;text-shadow:0 2px 10px rgba(0,0,0,.5)}
 .banner .addr{font-size:14px;opacity:.92;letter-spacing:.03em}
 .banner h2{font:800 clamp(24px,7.2vw,42px)/1.2 "Abhaya Libre","Noto Sans Sinhala",serif;color:#ffd166;margin:12px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.3);text-shadow:0 2px 12px rgba(0,0,0,.55)}
+
+nav{overflow-x:auto}nav button{flex:1 0 auto;padding:12px 14px;white-space:nowrap}
+.chk{display:inline-flex;gap:6px;align-items:center;font-weight:400;margin:0 12px 6px 0;font-size:14px}
+.chk input{width:18px;height:18px}
 </style>
 </head>
 <body>
@@ -120,7 +124,7 @@ import {getFirestore,doc,getDoc,setDoc,deleteDoc,collection,query,where,getDocs,
 
 /* ====== මෙහි ඔබගේ Firebase සැකසුම් ඇතුළත් කරන්න ====== */
 const CFG={apiKey:"AIzaSyARu43wSaPjmPVYA1AIBjl8SAYCjnq5MK8",authDomain:"school-attendence-338a3.firebaseapp.com",projectId:"school-attendence-338a3",storageBucket:"school-attendence-338a3.firebasestorage.app",messagingSenderId:"541003437458",appId:"1:541003437458:web:027457e526129f50819d4b",measurementId:"G-DC2SCW3780"};
-const SCHOOL="බ/ඩෙන්සිල් කොබ්බෑකඩුව මහා විද්‍යාලය",SUB="හාලිඇල";
+const SCHOOL="බ/බ/ඩෙන්සිල් කොබ්බෑකඩුව මහා විද්‍යාලය",SUB="හාලිඇල";
 const ADDRESS="හාලිඇල"; // පූර්ණ ලිපිනය මෙහි ලියන්න (උදා: "හාලිඇල, බදුල්ල")
 const BANNER=`<div class="banner"><img src="logo.png" alt=""><h1>${SCHOOL}</h1><div class="addr">${ADDRESS}</div><h2>දෛනික සිසු පැමිණීම සටහන් කිරීමේ පද්ධතිය</h2></div>`;
 const ADMINS=["sudanchamalka@gmail.com"]; // කාර්යාලයේ ඊමේල් (firestore.rules හි ද එසේම දමන්න)
@@ -135,7 +139,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const pad=n=>String(n).padStart(2,"0"),ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const pct=(a,t)=>t?(100-a/t*100).toFixed(1)+"%":"-";
 const PL=[["day","දිනපතා"],["week","සතිපතා"],["month","මාසික"],["year","වාර්ෂික"]];
-const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[]};
+const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:""};
 
 const FOOT=p=>`<footer style="padding-bottom:${p}px">Created By R.M.S.Chamalka</footer>`;
 function toast(m){const t=$("#t");t.textContent=m;t.style.display="block";clearTimeout(toast.k);toast.k=setTimeout(()=>t.style.display="none",2800)}
@@ -155,7 +159,7 @@ async function loadRep(){const [a,b]=range(S.p,S.rd);
 async function loadUsers(){const s=await getDocs(collection(db,"users"));S.users=s.docs.map(d=>({id:d.id,...d.data()}));render()}
 
 /* ---------- සාරාංශ වගු ---------- */
-function tables(){
+function tables(){if(S.tab=="ur")return utables();
  const cur=S.role=="admin"?S.cls:S.cid,T=[];
  if(cur=="all"){
   const by={};S.docs.forEach(x=>(by[x.classId]=by[x.classId]||[]).push(x));
@@ -212,18 +216,70 @@ function vRep(){return `<div class="ph"><img src="logo.png" alt=""><h2>${SCHOOL}
  ${S.role=="admin"?`<select data-c="cls" style="margin-top:8px"><option value="all">සියලු පන්ති</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.cls==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
  <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${stats()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${tables().map(tbl).join("")}`}
 
+/* ---------- විෂය ඒකක ---------- */
+const UNITS=[["com","පරිගණක ඒකකය"],["mus","සංගීත කාමරය"],["sci","විද්‍යාගාරය"],["dan","නැටුම් කාමරය"],["art","චිත්‍ර කාමරය"],["smt","ස්මාර්ට් කාමරය"]];
+const PERIODS=8; // දිනකට කාලච්ඡේද ගණන
+const uname=id=>(UNITS.find(u=>u[0]==id)||[0,id])[1];
+const cord=(a,b)=>parseInt(a)-parseInt(b)||(a<b?-1:a>b?1:0);
+const ucl=()=>[...new Set(S.ur.map(x=>x.classId))].sort(cord);
+const uro=()=>S.ur.filter(x=>x.classId==S.ucls);
+const ucnt=()=>`සිසුන් ${uro().length} · නොපැමිණි <b>${S.uabs.size}</b> · පැමිණි <b>${uro().length-S.uabs.size}</b>`;
+const tabsFor=()=>S.role=="admin"?[["rep","සාරාංශ"],["ur","ඒකක සාරාංශ"],["usr","ගුරුවරු"]]:[...(S.cid?[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"]]:[]),...(S.units.length?[["um","ඒකක"],["ul","ඒකක සිසුන්"],["ur","ඒකක සාරාංශ"]]:[])];
+const usel=()=>S.units.length>1?`<label>ඒකකය<select data-c="unit">${S.units.map(u=>`<option value="${u}" ${S.unit==u?"selected":""}>${uname(u)}</option>`).join("")}</select></label>`:`<h3 style="margin:0">${uname(S.unit)}</h3>`;
+const unitChk=(cls,sel,live)=>UNITS.map(([id,n])=>`<label class="chk"><input type="checkbox" class="${cls}" value="${id}" ${sel.includes(id)?"checked":""} ${live?'data-c="uu"':""}>${n}</label>`).join("");
+const PH=t=>`<div class="ph"><img src="logo.png" alt=""><h2>${SCHOOL}</h2><div>${SUB}</div><div>${t} · ${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</div></div>`;
+
+async function loadRoster(){if(!S.unit)return;const s=await getDocs(query(collection(db,"unitStudents"),where("unitId","==",S.unit)));
+ S.ur=s.docs.map(d=>d.data()).sort((a,b)=>cord(a.classId,b.classId)||a.order-b.order);if(!ucl().includes(S.ucls))S.ucls=ucl()[0]||""}
+async function loadUAtt(){if(!S.unit||!S.ucls){S.usub=false;S.uabs=new Set();return}
+ const d=await getDoc(doc(db,"unitAtt",[S.unit,S.date,S.pd,S.ucls].join("_")));S.usub=d.exists();S.uabs=new Set(d.exists()?d.data().absent.map(a=>a.id):[])}
+async function loadPick(){if(!S.pk){S.pl=[];return}const s=await getDocs(query(collection(db,"students"),where("classId","==",S.pk)));S.pl=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.order-b.order)}
+async function loadUrep(){const [a,b]=range(S.p,S.rd);
+ const q=S.role=="admin"?query(collection(db,"unitAtt"),where("date",">=",a),where("date","<=",b)):query(collection(db,"unitAtt"),where("unitId","==",S.uf));
+ const s=await getDocs(q);S.uh=s.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b&&(S.uf=="all"||x.unitId==S.uf)).sort((x,y)=>(x.date+x.period)<(y.date+y.period)?-1:1);S.rng=[a,b];render()}
+
+function vUm(){const cl=ucl(),L=uro();
+ return `<div class="card">${usel()}<div class="row" style="margin-top:8px"><input type="date" value="${S.date}" max="${ymd(new Date())}" data-c="ud"><select data-c="upd">${Array.from({length:PERIODS},(_,i)=>`<option value="${i+1}" ${S.pd==i+1?"selected":""}>${i+1} වන කාලච්ඡේදය</option>`).join("")}</select></div>
+ ${cl.length?`<select data-c="ucls" style="margin-top:8px">${cl.map(c=>`<option value="${c}" ${S.ucls==c?"selected":""}>පන්තිය ${cname(c)}</option>`).join("")}</select>`:""}
+ <div style="margin-top:8px">${S.usub?'<span class="ok">✓ යවා ඇත (වෙනස් කර යළි යැවිය හැක)</span>':'<span>මෙම කාලච්ඡේදයට නොපැමිණි සිසුන්ගේ කාඩ්පත් පමණක් ස්පර්ශ කරන්න</span>'}</div></div>
+ ${L.length?`<div class="grid">${L.map((s,i)=>`<div class="fc${S.uabs.has(s.studentId)?" ab":""}" tabindex="0" role="button" data-a="utog" data-id="${s.studentId}"><div class="fi"><div class="ff"><small>${i+1}</small><b>${esc(s.name)}</b><span>පැමිණි ✓</span></div><div class="fb"><small>${i+1}</small><b>${esc(s.name)}</b><span>නොපැමිණි ✕</span></div></div></div>`).join("")}</div>`:'<div class="card">මෙම ඒකකයට සිසුන් නැත. "ඒකක සිසුන්" ටැබයෙන් පන්ති ලැයිස්තුවෙන් සිසුන් තෝරන්න.</div>'}
+ <div class="bar"><span id="cnt">${ucnt()}</span><button class="pri" data-a="usend" ${L.length?"":"disabled"}>${S.usub?"යළි යවන්න":"යවන්න"}</button></div>`}
+
+function vUl(){const have=new Set(S.ur.map(x=>x.studentId));
+ return `<div class="card">${usel()}</div>
+ <div class="card"><h3>පන්ති ලැයිස්තුවෙන් සිසුන් තෝරන්න</h3><select data-c="pk"><option value="">පන්තියක් තෝරන්න</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.pk==c.id?"selected":""}>${c.name}</option>`).join("")}</select>
+ ${S.pl.length?`<div style="margin-top:8px">${S.pl.map(s=>`<label class="st" style="cursor:pointer;font-weight:400;margin:0"><input type="checkbox" class="pk" value="${s.id}" ${have.has(s.id)?"checked disabled":""} style="width:22px;height:22px"><span style="flex:1">${esc(s.name)}</span>${have.has(s.id)?'<span class="ok">එක් කර ඇත</span>':""}</label>`).join("")}</div><div class="row" style="margin-top:10px"><button class="sec" data-a="uall">සියල්ල තෝරන්න</button><button class="pri" data-a="uadd">තෝරාගත් අය එක් කරන්න</button></div>`:(S.pk?"<p>මෙම පන්තියේ සිසුන් නැත.</p>":"")}</div>
+ <div class="card"><h3>${uname(S.unit)} — සිසුන් (${S.ur.length})</h3>${ucl().length?ucl().map(c=>{const L=S.ur.filter(x=>x.classId==c);return `<p style="margin:10px 0 0"><b>පන්තිය ${cname(c)}</b> (${L.length})</p>${L.map(s=>`<div class="st" style="cursor:default"><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="udel" data-id="${s.studentId}" aria-label="ඉවත් කරන්න">✕</button></div>`).join("")}`}).join(""):"තවම සිසුන් නැත."}</div>`}
+
+function utables(){const T=[];
+ if(S.uf=="all"){const by={};S.uh.forEach(x=>(by[x.unitId]=by[x.unitId]||[]).push(x));let tt=0,ta=0;
+  const rows=UNITS.map(([id,n])=>{const l=by[id]||[],t=l.reduce((s,x)=>s+x.total,0),a=l.reduce((s,x)=>s+x.absent.length,0);tt+=t;ta+=a;return[n,l.length,a,pct(a,t)]});
+  rows.push(["එකතුව","",ta,pct(ta,tt)]);T.push({head:["ඒකකය","කාලච්ඡේද සටහන්","මුළු නොපැමිණීම්","සාමාන්‍ය පැමිණීම"],rows});return T}
+ T.push({title:uname(S.uf),head:["දිනය","කාලච්ඡේදය","පන්තිය","සිසුන්","නොපැමිණි","පැමිණි","%","නොපැමිණි සිසුන්"],rows:S.uh.map(x=>[x.date,x.period,cname(x.classId),x.total,x.absent.length,x.total-x.absent.length,pct(x.absent.length,x.total),x.absent.map(a=>a.name).join(", ")])});
+ if(S.p!="day"){const c={};S.uh.forEach(x=>x.absent.forEach(a=>{c[a.id]=c[a.id]||{n:a.name+" ("+cname(x.classId)+")",k:0};c[a.id].k++}));
+  T.push({title:"සිසුන් අනුව නොපැමිණි වාර",head:["නම","වාර ගණන"],rows:Object.values(c).sort((x,y)=>y.k-x.k).map(v=>[v.n,v.k])})}
+ return T}
+function ustats(){const d=S.uh,t=d.reduce((s,x)=>s+x.total,0),a=d.reduce((s,x)=>s+x.absent.length,0);
+ return `<div class="tiles"><div><b>${d.length}</b>කාලච්ඡේද සටහන්</div><div><b>${a}</b>නොපැමිණීම්</div><div><b>${pct(a,t)}</b>පැමිණීම</div></div>`}
+function vUr(){const adm=S.role=="admin";
+ return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" ඒකක සාරාංශය"+(S.uf!="all"?" · "+uname(S.uf):""))}<div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
+ <select data-c="uf" style="margin-top:8px">${adm?'<option value="all">සියලු ඒකක</option>':""}${(adm?UNITS.map(u=>u[0]):S.units).map(u=>`<option value="${u}" ${S.uf==u?"selected":""}>${uname(u)}</option>`).join("")}</select>
+ <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${ustats()}${utables().map(tbl).join("")}`}
+
 function vUsers(){return `<div class="card"><h3>නව ගිණුමක්</h3><label>නම<input id="un"></label><label>ඊමේල්<input type="email" id="ue"></label><label>තාවකාලික මුරපදය (අකුරු 6+)<input id="up"></label>
- <label>පන්තිය<select id="uk"><option value="">කාර්යාලය (පරිපාලක)</option>${CLASSES.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select></label><button class="pri" data-a="adduser">ගිණුම සාදන්න</button></div>
- <div class="card"><h3>ගිණුම්</h3>${S.users.map(u=>`<div class="row" style="margin-bottom:8px"><div style="flex:1">${esc(u.name||"")}<br><small>${esc(u.email)}</small></div><select data-c="uc" data-uid="${u.id}" style="width:auto"><option value="">කාර්යාලය</option>${CLASSES.map(c=>`<option value="${c.id}" ${u.classId==c.id?"selected":""}>${c.name}</option>`).join("")}</select><button class="x" data-a="deluser" data-id="${u.id}" aria-label="ඉවත් කරන්න">✕</button></div>`).join("")||"ගිණුම් නැත"}</div>`}
+ <label>භූමිකාව<select id="urole"><option value="teacher">ගුරුවරයා</option><option value="admin">කාර්යාලය (පරිපාලක)</option></select></label>
+ <label>පන්ති භාරය<select id="uk"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select></label>
+ <div style="margin-bottom:10px"><b style="font-size:14px">ඒකක භාරය</b><br>${unitChk("nu",[])}</div><button class="pri" data-a="adduser">ගිණුම සාදන්න</button></div>
+ <div class="card"><h3>ගිණුම්</h3>${S.users.map(u=>`<div class="urow" data-uid="${u.id}" style="border-bottom:1px solid var(--ln);padding:8px 0"><div class="row"><div style="flex:1">${esc(u.name||"")}${u.role=="admin"?' <span class="ok">(කාර්යාලය)</span>':""}<br><small>${esc(u.email)}</small></div><select data-c="uc" data-uid="${u.id}" style="width:auto"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}" ${u.classId==c.id?"selected":""}>${c.name}</option>`).join("")}</select><button class="x" data-a="deluser" data-id="${u.id}" aria-label="ඉවත් කරන්න">✕</button></div><div style="margin-top:4px">${unitChk("uu",u.units||[],1)}</div></div>`).join("")||"ගිණුම් නැත"}</div>`}
 
 function render(){
  if(!S.u){app.innerHTML=vLogin();return}
- const adm=S.role=="admin",tabs=adm?[["rep","සාරාංශ"],["usr","ගුරුවරු"]]:[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"]];
+ const adm=S.role=="admin",tabs=tabsFor();
  let body;
- if(!adm&&!S.cid)body='<div class="card">ඔබගේ ගිණුමට පන්තියක් ලබා දී නැත. කාර්යාලය අමතන්න.</div>';
- else body={mark:vMark,stu:vStu,rep:vRep,usr:vUsers}[S.tab]();
- app.innerHTML=`<header><span title="${esc(S.u.email)}">${adm?"කාර්යාලය":"පන්තිය "+cname(S.cid)}</span><div class="row"><button class="lnk" data-a="qr">QR</button><button class="lnk" data-a="out">පිටවන්න</button></div></header>${BANNER}
- <nav>${tabs.map(([k,v])=>`<button class="${S.tab==k?"on":""}" data-a="tab" data-id="${k}">${v}</button>`).join("")}</nav><main>${body}</main>${FOOT(!adm&&S.cid&&S.tab=="mark"?90:16)}`}
+ if(!tabs.length)body='<div class="card">ඔබගේ ගිණුමට පන්තියක් හෝ ඒකකයක් ලබා දී නැත. කාර්යාලය අමතන්න.</div>';
+ else body={mark:vMark,stu:vStu,rep:vRep,usr:vUsers,um:vUm,ul:vUl,ur:vUr}[S.tab]();
+ app.innerHTML=`<header><span title="${esc(S.u.email)}">${adm?"කාර්යාලය":[S.cid?"පන්තිය "+cname(S.cid):"",S.units.length?"ඒකක භාර":""].filter(Boolean).join(" · ")}</span><div class="row"><button class="lnk" data-a="qr">QR</button><button class="lnk" data-a="out">පිටවන්න</button></div></header>${BANNER}
+ <nav>${tabs.map(([k,v])=>`<button class="${S.tab==k?"on":""}" data-a="tab" data-id="${k}">${v}</button>`).join("")}</nav><main>${body}</main>${FOOT(!adm&&(S.tab=="mark"||S.tab=="um")?90:16)}`}
 
 const XL="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",QRL="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js";
 const lib=u=>new Promise((r,j)=>{if(lib[u])return r();const e=document.createElement("script");e.src=u;e.onload=()=>{lib[u]=1;r()};e.onerror=j;document.head.appendChild(e)});
@@ -245,7 +301,13 @@ async function toXls(){toast("Excel සකසමින්...");await lib(XL);con
  XLSX.writeFile(wb,"attendance_"+S.p+"_"+S.rng[0]+".xlsx")}
 
 /* ---------- ක්‍රියා ---------- */
-async function go(t){S.tab=t;render();if(t=="rep")await loadRep();if(t=="usr")await loadUsers();if(t=="mark"){await loadAtt();render()}}
+async function go(t){S.tab=t;render();
+ if(t=="rep")await loadRep();if(t=="usr")await loadUsers();
+ if(t=="mark"){await loadSt();await loadAtt();render()}
+ if(t=="stu"){await loadSt();render()}
+ if(t=="um"){await loadRoster();await loadUAtt();render()}
+ if(t=="ul"){await loadRoster();render()}
+ if(t=="ur")await loadUrep()}
 
 app.addEventListener("submit",async e=>{e.preventDefault();
  try{await signInWithEmailAndPassword(auth,$("#le").value.trim(),$("#lp").value)}catch{toast("ඊමේල් හෝ මුරපදය වැරදියි")}});
@@ -253,8 +315,14 @@ app.addEventListener("submit",async e=>{e.preventDefault();
 app.addEventListener("change",async e=>{const c=e.target.dataset.c;if(!c)return;const v=e.target.value;
  try{
   if(c=="md"){S.date=v;await loadAtt();render()}
-  else if(c=="uc"){await setDoc(doc(db,"users",e.target.dataset.uid),{classId:v,role:v?"teacher":"admin"},{merge:true});toast("යාවත්කාලීන කළා")}
-  else{S[c]=v;await loadRep()}
+  else if(c=="ud"){S.date=v;await loadUAtt();render()}
+  else if(c=="upd"||c=="ucls"){S[c=="upd"?"pd":"ucls"]=v;await loadUAtt();render()}
+  else if(c=="unit"){S.unit=v;S.pl=[];await loadRoster();if(S.tab=="um")await loadUAtt();render()}
+  else if(c=="pk"){S.pk=v;await loadPick();render()}
+  else if(c=="uf"){S.uf=v;await loadUrep()}
+  else if(c=="uc"){await setDoc(doc(db,"users",e.target.dataset.uid),{classId:v},{merge:true});toast("යාවත්කාලීන කළා")}
+  else if(c=="uu"){const r=e.target.closest(".urow");await setDoc(doc(db,"users",r.dataset.uid),{units:[...r.querySelectorAll(".uu:checked")].map(x=>x.value)},{merge:true});toast("යාවත්කාලීන කළා")}
+  else{S[c]=v;S.tab=="ur"?await loadUrep():await loadRep()}
  }catch{toast("දෝෂයකි")}});
 
 app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(!el)return;const a=el.dataset.a,id=el.dataset.id;
@@ -274,16 +342,26 @@ app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(
   await b.commit();await loadSt();toast(L.length+" දෙනෙකු එක් කළා");return render()}
  if(a=="edst"){const s=S.st.find(x=>x.id==id),n=prompt("නම",s.name);if(n&&n.trim()){await setDoc(doc(db,"students",id),{name:n.trim()},{merge:true});await loadSt();render()}return}
  if(a=="delst"){const s=S.st.find(x=>x.id==id);if(confirm(s.name+" ඉවත් කරන්නද?")){await deleteDoc(doc(db,"students",id));await loadSt();render()}return}
+ if(a=="utog"){S.uabs.has(id)?S.uabs.delete(id):S.uabs.add(id);el.classList.toggle("ab");$("#cnt").innerHTML=ucnt();return}
+ if(a=="usend"){const L=uro(),ab=L.filter(x=>S.uabs.has(x.studentId)).map(x=>({id:x.studentId,name:x.name}));
+  const p=setDoc(doc(db,"unitAtt",[S.unit,S.date,S.pd,S.ucls].join("_")),{unitId:S.unit,classId:S.ucls,date:S.date,period:+S.pd,total:L.length,absent:ab,by:S.u.email,at:Date.now()});
+  try{await Promise.race([p,new Promise((_,j)=>setTimeout(j,6000,"t"))]);S.usub=true;toast("යවන ලදී ✓")}catch(x){toast(x=="t"?"ජාලය නැත. සම්බන්ධ වූ විට යැවේ":"යැවීම අසාර්ථකයි")}
+  return render()}
+ if(a=="uall"){document.querySelectorAll(".pk:not(:disabled)").forEach(x=>x.checked=true);return}
+ if(a=="uadd"){const ids=[...document.querySelectorAll(".pk:checked:not(:disabled)")].map(x=>x.value);if(!ids.length)return toast("සිසුන් තෝරන්න");
+  const b=writeBatch(db);ids.forEach(i=>{const st=S.pl.find(x=>x.id==i);b.set(doc(db,"unitStudents",S.unit+"_"+i),{unitId:S.unit,studentId:i,name:st.name,classId:S.pk,order:st.order||0})});
+  await b.commit();await loadRoster();toast(ids.length+" දෙනෙකු එක් කළා");return render()}
+ if(a=="udel"){await deleteDoc(doc(db,"unitStudents",S.unit+"_"+id));await loadRoster();return render()}
  if(a=="pdf")return window.print();
  if(a=="xls")return toXls();
  if(a=="qr")return showQR();
  if(a=="csv"){const out=tables().map(t=>[t.title||"",t.head,...t.rows].map(r=>[].concat(r).map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n")).join("\n\n");
   const l=document.createElement("a");l.href=URL.createObjectURL(new Blob(["\ufeff"+out],{type:"text/csv"}));l.download="attendance_"+S.p+"_"+S.rng[0]+".csv";l.click();return}
- if(a=="adduser"){const n=$("#un").value.trim(),m=$("#ue").value.trim(),p=$("#up").value,k=$("#uk").value;
+ if(a=="adduser"){const n=$("#un").value.trim(),m=$("#ue").value.trim(),p=$("#up").value,k=$("#uk").value,ro=$("#urole").value,us=[...document.querySelectorAll(".nu:checked")].map(x=>x.value);
   if(!n||!m||p.length<6)return toast("සියලු තොරතුරු ඇතුළත් කරන්න");
   const sec=initializeApp(CFG,"sec"+Date.now()),sa=getAuth(sec);
   const c=await createUserWithEmailAndPassword(sa,m,p);
-  await setDoc(doc(db,"users",c.user.uid),{email:m,name:n,role:k?"teacher":"admin",classId:k});
+  await setDoc(doc(db,"users",c.user.uid),{email:m,name:n,role:ro,classId:ro=="teacher"?k:"",units:ro=="teacher"?us:[]});
   await signOut(sa);toast("ගිණුම සාදන ලදී");return loadUsers()}
  if(a=="deluser"){if(confirm("මෙම ගිණුමට ප්‍රවේශය ඉවත් කරන්නද?")){await deleteDoc(doc(db,"users",id));loadUsers()}return}
  }catch(x){console.error(x);toast(x.code=="auth/email-already-in-use"?"මෙම ඊමේල් දැනටමත් ඇත":"දෝෂයකි — යළි උත්සාහ කරන්න")}});
@@ -310,9 +388,9 @@ onAuthStateChanged(auth,async u=>{
  if(!u){S.u=null;return render()}
  S.u=u;let r=null;
  try{const d=await getDoc(doc(db,"users",u.uid));r=d.exists()?d.data():null}catch{}
- S.role=ADMINS.includes(u.email)?"admin":(r&&r.role);S.cid=r&&r.classId;
- S.tab=S.role=="admin"?"rep":"mark";render();
- try{if(S.role=="admin")await loadRep();else if(S.cid){await loadSt();await loadAtt();render()}}catch(x){console.error(x)}});
+ S.role=ADMINS.includes(u.email)?"admin":(r&&r.role);S.cid=(r&&r.classId)||"";S.units=(r&&r.units)||[];S.unit=S.units[0]||"";S.uf=S.role=="admin"?"all":S.unit;
+ const T=tabsFor();S.tab=T.length?T[0][0]:"";render();
+ try{if(S.tab)await go(S.tab)}catch(x){console.error(x)}});
 
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
 </script>
