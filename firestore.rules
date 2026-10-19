@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function hasProf() { return exists(/databases/$(db)/documents/users/$(request.auth.uid)); }
+    function prof() { return get(/databases/$(db)/documents/users/$(request.auth.uid)).data; }
+    // කාර්යාලයේ ඊමේල් ලිපිනය මෙහි ද දමන්න (index.html හි ADMINS හා සමාන)
+    function isAdmin() {
+      return signedIn() && (request.auth.token.email in ['office@example.com']
+        || (hasProf() && prof().role == 'admin'));
+    }
+    function myClass() {
+      return signedIn() && hasProf() && prof().role == 'teacher' ? prof().classId : '#none';
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+    match /students/{id} {
+      allow read: if isAdmin() || resource.data.classId == myClass();
+      allow create: if isAdmin() || request.resource.data.classId == myClass();
+      allow update, delete: if isAdmin() || resource.data.classId == myClass();
+    }
+    match /attendance/{id} {
+      allow read: if isAdmin() || resource.data.classId == myClass();
+      allow create, update: if request.resource.data.classId == myClass()
+                            && id == request.resource.data.classId + '_' + request.resource.data.date;
+      allow delete: if isAdmin();
+    }
+  }
+}
