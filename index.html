@@ -84,6 +84,24 @@ footer{text-align:center;color:#fff;font-size:13px;font-weight:600;padding:10px 
 .tiles div:nth-child(2){background:linear-gradient(135deg,#ff4d6d,#ff8a00)}
 .tiles div:nth-child(3){background:linear-gradient(135deg,#8f5cff,#ff4d8d)}
 @media(prefers-reduced-motion:reduce){.fi{transition:none}}
+
+header b{font-size:15px;line-height:1.35;min-width:0}header small{font-size:11px}
+.lnk{font-size:14px;white-space:nowrap}
+.fc,button,nav button{touch-action:manipulation}
+.ph{display:none}
+.modal{position:fixed;inset:0;background:rgba(5,10,40,.72);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal .card{margin:0}
+@media(min-width:900px){main{max-width:980px}.grid{grid-template-columns:repeat(5,1fr)}.bar{padding-inline:calc((100% - 980px)/2 + 14px)}}
+@media(max-width:380px){.tiles b{font-size:20px}.fc{height:90px}}
+@media print{
+ body{background:#fff!important;color:#000}
+ #bg,header,nav,footer,.bar,.noprint,.grid,#t,.modal{display:none!important}
+ main{max-width:none;padding:0}.ph{display:block;text-align:center;margin-bottom:10px}
+ .ph img{width:70px;height:70px;border-radius:12px}.ph h2{margin:4px 0}
+ .card{background:#fff;box-shadow:none;border:1px solid #bbb;break-inside:avoid}
+ .tiles div{background:#fff!important;color:#000!important;border:1px solid #999;box-shadow:none}
+ th{background:#eee!important}
+}
 </style>
 </head>
 <body>
@@ -95,7 +113,7 @@ import {getFirestore,doc,getDoc,setDoc,deleteDoc,collection,query,where,getDocs,
 
 /* ====== මෙහි ඔබගේ Firebase සැකසුම් ඇතුළත් කරන්න ====== */
 const CFG={apiKey:"AIzaSyARu43wSaPjmPVYA1AIBjl8SAYCjnq5MK8",authDomain:"school-attendence-338a3.firebaseapp.com",projectId:"school-attendence-338a3",storageBucket:"school-attendence-338a3.firebasestorage.app",messagingSenderId:"541003437458",appId:"1:541003437458:web:027457e526129f50819d4b",measurementId:"G-DC2SCW3780"};
-const SCHOOL="ඩෙන්සිල්කොබ්බෑකඩුව මහා විද්‍යාලය";
+const SCHOOL="බ/බ/ඩෙන්සිල් කොබ්බෑකඩුව මහා විද්‍යාලය",SUB="හාලිඇල";
 const ADMINS=["sudanchamalka@gmail.com"]; // කාර්යාලයේ ඊමේල් (firestore.rules හි ද එසේම දමන්න)
 const SECTIONS=["A","B"];             // සෑම ශ්‍රේණියකටම පන්ති 2ක්
 /* ======================================================== */
@@ -161,10 +179,10 @@ function tables(){
 /* ---------- දර්ශන ---------- */
 const tbl=t=>`<div class="card">${t.title?`<h3>${esc(t.title)}</h3>`:""}<div class="w"><table><tr>${t.head.map(h=>`<th>${h}</th>`).join("")}</tr>${t.rows.length?t.rows.map(r=>`<tr>${r.map(c=>`<td class="${c==="යවා නැත"?"warn":""}">${esc(c)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${t.head.length}">දත්ත නැත</td></tr>`}</table></div></div>`;
 
-function vLogin(){return `<main style="padding-top:30px"><div class="hero"><img src="logo.png" alt=""><h1>${SCHOOL}</h1><p>සිසුන්ගේ දෛනික පැමිණීම</p></div><form id="lg" class="card"><h3>ඇතුල් වන්න</h3>
+function vLogin(){return `<main style="padding-top:30px"><div class="hero"><img src="logo.png" alt=""><h1>${SCHOOL}</h1><p>${SUB} · සිසුන්ගේ දෛනික පැමිණීම</p></div><form id="lg" class="card"><h3>ඇතුල් වන්න</h3>
 <label>ඊමේල්<input type="email" id="le" autocomplete="username" required></label>
 <label>මුරපදය<input type="password" id="lp" autocomplete="current-password" required></label>
-<div class="row"><button class="pri" type="submit">ඇතුල් වන්න</button><button class="sec" type="button" data-a="reset">මුරපදය අමතකද?</button></div></form></main>${FOOT(16)}`}
+<div class="row"><button class="pri" type="submit">ඇතුල් වන්න</button><button class="sec" type="button" data-a="reset">මුරපදය අමතකද?</button></div></form><p style="text-align:center"><button class="lnk" data-a="qr">QR කේතය පෙන්වන්න</button></p></main>${FOOT(16)}`}
 
 const cnt=()=>`සිසුන් ${S.st.length} · නොපැමිණි <b>${S.abs.size}</b> · පැමිණි <b>${S.st.length-S.abs.size}</b>`;
 function vMark(){const n=S.st.length;
@@ -181,9 +199,9 @@ function clsCards(){const by={};S.docs.forEach(x=>by[x.classId]=x);
 function vStu(){return `<div class="card"><label>නම් ඇතුළත් කරන්න (පේළියකට එක නමක්)<textarea id="nn" rows="5"></textarea></label><button class="pri" data-a="addst">එකතු කරන්න</button></div>
  <div class="card" style="padding:0">${S.st.length?S.st.map((s,i)=>`<div class="st" style="cursor:default"><span>${i+1}</span><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="edst" data-id="${s.id}" aria-label="වෙනස් කරන්න">✎</button><button class="x" data-a="delst" data-id="${s.id}" aria-label="මකන්න">✕</button></div>`).join(""):'<p style="padding:14px">තවම සිසුන් නැත.</p>'}</div>`}
 
-function vRep(){return `<div class="card"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
+function vRep(){return `<div class="ph"><img src="logo.png" alt=""><h2>${SCHOOL}</h2><div>${SUB}</div><div>${(PL.find(x=>x[0]==S.p)||[])[1]} සාරාංශය · ${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}${S.role=="admin"&&S.cls!="all"?" · පන්තිය "+cname(S.cls):""}</div></div><div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
  ${S.role=="admin"?`<select data-c="cls" style="margin-top:8px"><option value="all">සියලු පන්ති</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.cls==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
- <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><button class="sec" data-a="csv">CSV බාගන්න</button></div>${stats()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${tables().map(tbl).join("")}`}
+ <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${stats()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${tables().map(tbl).join("")}`}
 
 function vUsers(){return `<div class="card"><h3>නව ගිණුමක්</h3><label>නම<input id="un"></label><label>ඊමේල්<input type="email" id="ue"></label><label>තාවකාලික මුරපදය (අකුරු 6+)<input id="up"></label>
  <label>පන්තිය<select id="uk"><option value="">කාර්යාලය (පරිපාලක)</option>${CLASSES.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select></label><button class="pri" data-a="adduser">ගිණුම සාදන්න</button></div>
@@ -195,8 +213,27 @@ function render(){
  let body;
  if(!adm&&!S.cid)body='<div class="card">ඔබගේ ගිණුමට පන්තියක් ලබා දී නැත. කාර්යාලය අමතන්න.</div>';
  else body={mark:vMark,stu:vStu,rep:vRep,usr:vUsers}[S.tab]();
- app.innerHTML=`<header><div class="row"><img src="logo.png" alt=""><b>${SCHOOL}<small>${adm?"කාර්යාලය":"පන්තිය "+cname(S.cid)} · ${esc(S.u.email)}</small></b></div><button class="lnk" data-a="out">පිටවන්න</button></header>
+ app.innerHTML=`<header><div class="row"><img src="logo.png" alt=""><b>${SCHOOL}<small title="${esc(S.u.email)}">${SUB} · ${adm?"කාර්යාලය":"පන්තිය "+cname(S.cid)}</small></b></div><div class="row"><button class="lnk" data-a="qr">QR</button><button class="lnk" data-a="out">පිටවන්න</button></div></header>
  <nav>${tabs.map(([k,v])=>`<button class="${S.tab==k?"on":""}" data-a="tab" data-id="${k}">${v}</button>`).join("")}</nav><main>${body}</main>${FOOT(!adm&&S.cid&&S.tab=="mark"?90:16)}`}
+
+const XL="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",QRL="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js";
+const lib=u=>new Promise((r,j)=>{if(lib[u])return r();const e=document.createElement("script");e.src=u;e.onload=()=>{lib[u]=1;r()};e.onerror=j;document.head.appendChild(e)});
+async function showQR(){
+ const url=location.href.split("#")[0].split("?")[0].replace(/index\.html$/,"");
+ await lib(QRL);const q=qrcode(0,"M");q.addData(url);q.make();
+ const n=q.getModuleCount(),z=8,pd=4*z,sz=n*z+pd*2,c=document.createElement("canvas");c.width=c.height=sz;
+ const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,sz,sz);g.fillStyle="#0b1f6b";
+ for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))g.fillRect(pd+k*z,pd+r*z,z,z);
+ c.style.cssText="width:100%;max-width:280px;height:auto;border-radius:12px";
+ const d=document.createElement("div");d.className="modal";
+ d.innerHTML=`<div class="card" style="text-align:center;max-width:340px;width:100%"><h3>${SCHOOL}</h3><div id="qc"></div><p style="word-break:break-all;font-size:13px">${esc(url)}</p>${/localhost|127\.0\.0\.1/.test(url)?'<p class="warn">⚠ මෙය localhost ලිපිනයකි. GitHub Pages ලිපිනයෙන් විවෘත කර QR ගන්න.</p>':""}<div class="row" style="justify-content:center"><button class="pri" id="qd">PNG බාගන්න</button><button class="sec" id="qx">වසන්න</button></div></div>`;
+ document.body.appendChild(d);d.querySelector("#qc").appendChild(c);
+ d.querySelector("#qx").onclick=()=>d.remove();d.onclick=e=>{if(e.target==d)d.remove()};
+ d.querySelector("#qd").onclick=()=>c.toBlob(b=>{const l=document.createElement("a");l.href=URL.createObjectURL(b);l.download="attendance-app-qr.png";l.click()})}
+async function toXls(){toast("Excel සකසමින්...");await lib(XL);const wb=XLSX.utils.book_new();
+ tables().forEach((t,i)=>{const nm=(t.title||"සාරාංශ").replace(/[\\\/?*\[\]:]/g,"").slice(0,26)+" "+(i+1);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([[SCHOOL+" - "+SUB],[(PL.find(x=>x[0]==S.p)||[])[1]+" "+S.rng[0]+(S.rng[0]!=S.rng[1]?" — "+S.rng[1]:"")],[],t.head,...t.rows]),nm)});
+ XLSX.writeFile(wb,"attendance_"+S.p+"_"+S.rng[0]+".xlsx")}
 
 /* ---------- ක්‍රියා ---------- */
 async function go(t){S.tab=t;render();if(t=="rep")await loadRep();if(t=="usr")await loadUsers();if(t=="mark"){await loadAtt();render()}}
@@ -228,6 +265,9 @@ app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(
   await b.commit();await loadSt();toast(L.length+" දෙනෙකු එක් කළා");return render()}
  if(a=="edst"){const s=S.st.find(x=>x.id==id),n=prompt("නම",s.name);if(n&&n.trim()){await setDoc(doc(db,"students",id),{name:n.trim()},{merge:true});await loadSt();render()}return}
  if(a=="delst"){const s=S.st.find(x=>x.id==id);if(confirm(s.name+" ඉවත් කරන්නද?")){await deleteDoc(doc(db,"students",id));await loadSt();render()}return}
+ if(a=="pdf")return window.print();
+ if(a=="xls")return toXls();
+ if(a=="qr")return showQR();
  if(a=="csv"){const out=tables().map(t=>[t.title||"",t.head,...t.rows].map(r=>[].concat(r).map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n")).join("\n\n");
   const l=document.createElement("a");l.href=URL.createObjectURL(new Blob(["\ufeff"+out],{type:"text/csv"}));l.download="attendance_"+S.p+"_"+S.rng[0]+".csv";l.click();return}
  if(a=="adduser"){const n=$("#un").value.trim(),m=$("#ue").value.trim(),p=$("#up").value,k=$("#uk").value;
@@ -242,18 +282,18 @@ app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(
 app.addEventListener("keydown",e=>{if((e.key=="Enter"||e.key==" ")&&e.target.classList.contains("fc")){e.preventDefault();e.target.click()}});
 
 /* ---------- ක්‍රියාශීලී පසුබිම ---------- */
-(()=>{const c=$("#bg"),x=c.getContext("2d"),K=["#ff4d8d","#ffb703","#2ec4b6","#8f5cff","#3a86ff","#ff7b00"],P=[],m={x:-999,y:-999};let W,H;
+(()=>{const c=$("#bg"),x=c.getContext("2d"),K=["#3a86ff","#4cc9f0","#2ec4b6","#7b6cf6","#ff6fa5"],P=[],m={x:-999,y:-999};let W,H;
  const rs=()=>{W=c.width=innerWidth;H=c.height=innerHeight};rs();addEventListener("resize",rs);
- for(let i=0;i<24;i++){const bx=(Math.random()-.5)*.5,by=(Math.random()-.5)*.5;P.push({x:Math.random()*W,y:Math.random()*H,r:40+Math.random()*90,bx,by,vx:bx,vy:by,c:K[i%6]})}
+ for(let i=0;i<12;i++){const bx=(Math.random()-.5)*.35,by=(Math.random()-.5)*.35;P.push({x:Math.random()*W,y:Math.random()*H,r:70+Math.random()*90,bx,by,vx:bx,vy:by,c:K[i%5]})}
  const mv=e=>{const t=e.touches?e.touches[0]:e;m.x=t.clientX;m.y=t.clientY};
  addEventListener("pointermove",mv);addEventListener("touchmove",mv,{passive:true});addEventListener("touchstart",mv,{passive:true});
  const still=matchMedia("(prefers-reduced-motion:reduce)").matches;
- function f(){const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,"#0b1f6b");g.addColorStop(1,"#3b1c8c");x.fillStyle=g;x.fillRect(0,0,W,H);
+ function f(){const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,"#0a1a5c");g.addColorStop(1,"#13276f");x.fillStyle=g;x.fillRect(0,0,W,H);
   for(const p of P){const dx=p.x-m.x,dy=p.y-m.y,d=Math.hypot(dx,dy)||1;
-   if(d<220){p.vx+=dx/d*.12;p.vy+=dy/d*.12}
+   if(d<220){p.vx+=dx/d*.08;p.vy+=dy/d*.08}
    p.vx=p.vx*.97+p.bx*.03;p.vy=p.vy*.97+p.by*.03;p.x+=p.vx;p.y+=p.vy;
    if(p.x<-p.r)p.x=W+p.r;if(p.x>W+p.r)p.x=-p.r;if(p.y<-p.r)p.y=H+p.r;if(p.y>H+p.r)p.y=-p.r;
-   const r=x.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);r.addColorStop(0,p.c+"bb");r.addColorStop(1,p.c+"00");x.fillStyle=r;x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill()}
+   const r=x.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);r.addColorStop(0,p.c+"38");r.addColorStop(1,p.c+"00");x.fillStyle=r;x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill()}
   if(!still)requestAnimationFrame(f)}
  f()})();
 
