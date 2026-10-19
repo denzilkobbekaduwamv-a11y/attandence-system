@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b1f6b">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&family=Abhaya+Libre:wght@700;800&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#1f2a44;--bg:#f5f6f8;--ac:#f2b705;--ok:#2e7d5b;--no:#c0392b;--ln:#dde1e8}
 *{box-sizing:border-box}
@@ -95,13 +95,20 @@ header b{font-size:15px;line-height:1.35;min-width:0}header small{font-size:11px
 @media(max-width:380px){.tiles b{font-size:20px}.fc{height:90px}}
 @media print{
  body{background:#fff!important;color:#000}
- #bg,header,nav,footer,.bar,.noprint,.grid,#t,.modal{display:none!important}
+ #bg,header,.banner,nav,footer,.bar,.noprint,.grid,#t,.modal{display:none!important}
  main{max-width:none;padding:0}.ph{display:block;text-align:center;margin-bottom:10px}
  .ph img{width:70px;height:70px;border-radius:12px}.ph h2{margin:4px 0}
  .card{background:#fff;box-shadow:none;border:1px solid #bbb;break-inside:avoid}
  .tiles div{background:#fff!important;color:#000!important;border:1px solid #999;box-shadow:none}
  th{background:#eee!important}
 }
+
+header{padding:6px 14px}header span{font-size:13px;opacity:.9}
+.banner{max-width:980px;margin:0 auto;padding:16px 16px 12px;text-align:center;color:#fff}
+.banner img{width:88px;height:88px;border-radius:22px;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+.banner h1{font:800 clamp(21px,5.6vw,34px)/1.25 "Abhaya Libre","Noto Sans Sinhala",serif;margin:10px 0 2px;text-shadow:0 2px 10px rgba(0,0,0,.5)}
+.banner .addr{font-size:14px;opacity:.92;letter-spacing:.03em}
+.banner h2{font:800 clamp(24px,7.2vw,42px)/1.2 "Abhaya Libre","Noto Sans Sinhala",serif;color:#ffd166;margin:12px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.3);text-shadow:0 2px 12px rgba(0,0,0,.55)}
 </style>
 </head>
 <body>
@@ -114,6 +121,8 @@ import {getFirestore,doc,getDoc,setDoc,deleteDoc,collection,query,where,getDocs,
 /* ====== මෙහි ඔබගේ Firebase සැකසුම් ඇතුළත් කරන්න ====== */
 const CFG={apiKey:"AIzaSyARu43wSaPjmPVYA1AIBjl8SAYCjnq5MK8",authDomain:"school-attendence-338a3.firebaseapp.com",projectId:"school-attendence-338a3",storageBucket:"school-attendence-338a3.firebasestorage.app",messagingSenderId:"541003437458",appId:"1:541003437458:web:027457e526129f50819d4b",measurementId:"G-DC2SCW3780"};
 const SCHOOL="බ/බ/ඩෙන්සිල් කොබ්බෑකඩුව මහා විද්‍යාලය",SUB="හාලිඇල";
+const ADDRESS="හාලිඇල"; // පූර්ණ ලිපිනය මෙහි ලියන්න (උදා: "හාලිඇල, බදුල්ල")
+const BANNER=`<div class="banner"><img src="logo.png" alt=""><h1>${SCHOOL}</h1><div class="addr">${ADDRESS}</div><h2>දෛනික සිසු පැමිණීම සටහන් කිරීමේ පද්ධතිය</h2></div>`;
 const ADMINS=["sudanchamalka@gmail.com"]; // කාර්යාලයේ ඊමේල් (firestore.rules හි ද එසේම දමන්න)
 const SECTIONS=["A","B"];             // සෑම ශ්‍රේණියකටම පන්ති 2ක්
 /* ======================================================== */
@@ -179,7 +188,7 @@ function tables(){
 /* ---------- දර්ශන ---------- */
 const tbl=t=>`<div class="card">${t.title?`<h3>${esc(t.title)}</h3>`:""}<div class="w"><table><tr>${t.head.map(h=>`<th>${h}</th>`).join("")}</tr>${t.rows.length?t.rows.map(r=>`<tr>${r.map(c=>`<td class="${c==="යවා නැත"?"warn":""}">${esc(c)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${t.head.length}">දත්ත නැත</td></tr>`}</table></div></div>`;
 
-function vLogin(){return `<main style="padding-top:30px"><div class="hero"><img src="logo.png" alt=""><h1>${SCHOOL}</h1><p>${SUB} · සිසුන්ගේ දෛනික පැමිණීම</p></div><form id="lg" class="card"><h3>ඇතුල් වන්න</h3>
+function vLogin(){return `<main style="padding-top:0">${BANNER}<form id="lg" class="card"><h3>ඇතුල් වන්න</h3>
 <label>ඊමේල්<input type="email" id="le" autocomplete="username" required></label>
 <label>මුරපදය<input type="password" id="lp" autocomplete="current-password" required></label>
 <div class="row"><button class="pri" type="submit">ඇතුල් වන්න</button><button class="sec" type="button" data-a="reset">මුරපදය අමතකද?</button></div></form><p style="text-align:center"><button class="lnk" data-a="qr">QR කේතය පෙන්වන්න</button></p></main>${FOOT(16)}`}
@@ -213,7 +222,7 @@ function render(){
  let body;
  if(!adm&&!S.cid)body='<div class="card">ඔබගේ ගිණුමට පන්තියක් ලබා දී නැත. කාර්යාලය අමතන්න.</div>';
  else body={mark:vMark,stu:vStu,rep:vRep,usr:vUsers}[S.tab]();
- app.innerHTML=`<header><div class="row"><img src="logo.png" alt=""><b>${SCHOOL}<small title="${esc(S.u.email)}">${SUB} · ${adm?"කාර්යාලය":"පන්තිය "+cname(S.cid)}</small></b></div><div class="row"><button class="lnk" data-a="qr">QR</button><button class="lnk" data-a="out">පිටවන්න</button></div></header>
+ app.innerHTML=`<header><span title="${esc(S.u.email)}">${adm?"කාර්යාලය":"පන්තිය "+cname(S.cid)}</span><div class="row"><button class="lnk" data-a="qr">QR</button><button class="lnk" data-a="out">පිටවන්න</button></div></header>${BANNER}
  <nav>${tabs.map(([k,v])=>`<button class="${S.tab==k?"on":""}" data-a="tab" data-id="${k}">${v}</button>`).join("")}</nav><main>${body}</main>${FOOT(!adm&&S.cid&&S.tab=="mark"?90:16)}`}
 
 const XL="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",QRL="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js";
