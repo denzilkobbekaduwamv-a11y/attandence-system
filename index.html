@@ -306,10 +306,10 @@ const PH=(t,x)=>`<div class="ph"><div class="top"><img src="logo.png" alt=""><di
 
 async function loadRoster(){if(!S.unit)return;const s=await getDocs(query(collection(db,"unitStudents"),where("unitId","==",S.unit)));
  S.ur=s.docs.map(d=>d.data()).sort((a,b)=>cord(a.classId,b.classId)||a.order-b.order);if(!ucl().includes(S.ucls))S.ucls=ucl()[0]||""}
-async function loadUAtt(){S.uca=new Set();S.ucr=false;
+async function loadUAtt(){S.uca=new Set();S.ucr=false;S.ucn=[];
  if(!S.unit||!S.ucls){S.usub=false;S.uabs=new Set();return}
  const d=await getDoc(doc(db,"unitAtt",[S.unit,S.date,S.pd,S.ucls].join("_")));S.usub=d.exists();
- try{const c=await getDoc(doc(db,"attendance",S.ucls+"_"+S.date));if(c.exists()){S.ucr=true;S.uca=new Set(c.data().absent.map(x=>x.id))}}catch(x){console.error(x)}
+ try{const c=await getDoc(doc(db,"attendance",S.ucls+"_"+S.date));if(c.exists()){S.ucr=true;S.ucn=c.data().absent;S.uca=new Set(S.ucn.map(x=>x.id))}}catch(x){console.error(x)}
  S.uabs=d.exists()?new Set(d.data().absent.map(x=>x.id)):new Set(uro().filter(x=>S.uca.has(x.studentId)).map(x=>x.studentId))}
 async function loadPick(){S.perr="";if(!S.pk){S.pl=[];return}
  try{const s=await getDocs(query(collection(db,"students"),where("classId","==",S.pk)));S.pl=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.order-b.order)}catch(e){console.error(e);S.pl=[];S.perr=e.code||"error"}}
@@ -320,7 +320,7 @@ async function loadUrep(){const [a,b]=range(S.p,S.rd);
 function vUm(){const cl=ucl(),L=uro();
  return `<div class="card">${usel()}<div class="row" style="margin-top:8px"><input type="date" value="${S.date}" max="${ymd(new Date())}" data-c="ud"><select data-c="upd">${Array.from({length:PERIODS},(_,i)=>`<option value="${i+1}" ${S.pd==i+1?"selected":""}>${i+1} වන කාලච්ඡේදය</option>`).join("")}</select></div>
  ${cl.length?`<select data-c="ucls" style="margin-top:8px">${cl.map(c=>`<option value="${c}" ${S.ucls==c?"selected":""}>පන්තිය ${cname(c)} (සිසුන් ${S.ur.filter(x=>x.classId==c).length})</option>`).join("")}</select>`:""}
- <div style="margin-top:8px">${S.usub?'<span class="ok">✓ යවා ඇත (වෙනස් කර යළි යැවිය හැක)</span>':'<span>මෙම කාලච්ඡේදයට නොපැමිණි සිසුන්ගේ කාඩ්පත් පමණක් ස්පර්ශ කරන්න</span>'}${S.ucr?`<div style="margin-top:6px;font-size:13px">පන්ති පැමිණීමට අනුව නොපැමිණි ${uro().filter(x=>S.uca.has(x.studentId)).length} දෙනා ${S.usub?"":"ස්වයංක්‍රීයව සලකුණු කර ඇත"}</div>`:'<div style="margin-top:6px;font-size:13px">මෙම දිනයට පන්ති පැමිණීම තවම යවා නැත</div>'}</div></div>
+ <div style="margin-top:8px">${S.usub?'<span class="ok">✓ යවා ඇත (වෙනස් කර යළි යැවිය හැක)</span>':'<span>මෙම කාලච්ඡේදයට නොපැමිණි සිසුන්ගේ කාඩ්පත් පමණක් ස්පර්ශ කරන්න</span>'}${S.ucr?`<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:#fff4f3;font-size:14px"><b>පන්තිය ${cname(S.ucls)} හි අද නොපැමිණි සිසුන් (${S.ucn.length})</b>${S.ucn.length?S.ucn.map(x=>{const inU=uro().some(r=>r.studentId==x.id);return `<div>${esc(x.name)} <small>${inU?"· ඒකකයේ — සලකුණු කර ඇත":"· මෙම ඒකකයට අයත් නොවේ"}</small></div>`}).join(""):"<div>සියලු දෙනා පැමිණ ඇත</div>"}</div>`:'<div style="margin-top:6px;font-size:13px">මෙම දිනයට පන්ති පැමිණීම තවම යවා නැත</div>'}</div></div>
  ${L.length?`<div class="grid">${L.map((s,i)=>`<div class="fc${S.uabs.has(s.studentId)?" ab":""}" tabindex="0" role="button" data-a="utog" data-id="${s.studentId}"><div class="fi"><div class="ff"><small>${i+1}</small><b>${esc(s.name)}</b><span>පැමිණි ✓</span></div><div class="fb"><small>${i+1}</small><b>${esc(s.name)}</b><span>නොපැමිණි ✕</span></div></div></div>`).join("")}</div>`:'<div class="card">මෙම ඒකකයට සිසුන් නැත. "ඒකක සිසුන්" ටැබයෙන් පන්ති ලැයිස්තුවෙන් සිසුන් තෝරන්න.</div>'}
  <div class="bar"><span id="cnt">${ucnt()}</span><button class="pri" data-a="usend" ${L.length?"":"disabled"}>${S.usub?"යළි යවන්න":"යවන්න"}</button></div>`}
 
