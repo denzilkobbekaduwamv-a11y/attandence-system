@@ -182,9 +182,10 @@ const cname=id=>(CLASSES.find(c=>c.id==id)||{name:id}).name;
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pad=n=>String(n).padStart(2,"0"),ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const pctH=(p,t)=>t?(p/t*100).toFixed(1)+"%":"-";
 const pct=(a,t)=>t?(100-a/t*100).toFixed(1)+"%":"-";
 const PL=[["day","දිනපතා"],["week","සතිපතා"],["month","මාසික"],["year","වාර්ෂික"]];
-const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:"",reqs:[],req:null,lm:"in",sc:"1A",ss:"",sl:[],sdocs:[],rm:ymd(new Date()).slice(0,7),radocs:[]};
+const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:"",reqs:[],req:null,lm:"in",sc:"1A",ss:"",sl:[],sdocs:[],rm:ymd(new Date()).slice(0,7),radocs:[],hd:{}};
 
 const FOOT=p=>`<footer style="padding-bottom:${p}px">Created By R.M.S.Chamalka</footer>`;
 function toast(m){const t=$("#t");t.textContent=m;t.style.display="block";clearTimeout(toast.k);toast.k=setTimeout(()=>t.style.display="none",2800)}
@@ -195,6 +196,14 @@ function range(p,d){const t=new Date(d+"T00:00");let a,b;
  else{a=new Date(t.getFullYear(),0,1);b=new Date(t.getFullYear(),11,31)}
  return [ymd(a),ymd(b)]}
 
+/* ---------- පාසල් පැවති දින (කාර්යාලය ඇතුළත් කරයි) ---------- */
+async function loadHd(){try{const s=await getDocs(collection(db,"schoolDays"));S.hd={};s.docs.forEach(d=>S.hd[d.id]=+d.data().days)}catch(x){console.error(x)}}
+function heldOf(){if(S.p=="month")return S.hd[S.rd.slice(0,7)]??null;
+ if(S.p=="year"){const y=S.rd.slice(0,4),v=Object.entries(S.hd).filter(([k])=>k.startsWith(y));return v.length?v.reduce((q,[,x])=>q+x,0):null}return null}
+const heldCard=mk=>`<div class="row" style="margin-top:8px;align-items:flex-end"><label style="flex:1">පාසල් පැවති දින ගණන (${mk})<input type="number" id="hdv" min="0" max="31" inputmode="numeric" value="${S.hd[mk]??""}"></label><button class="pri" data-a="savehd" data-id="${mk}">සුරකින්න</button></div>`;
+const tilesS=(n,k)=>{const H=heldOf();return H==null?`<div class="tiles"><div><b>${n}</b>සටහන් කළ දින</div><div><b>${k}</b>නොපැමිණීම්</div><div><b>${pct(k,n)}</b>පැමිණීම</div></div>`
+ :`<div class="tiles"><div><b>${n-k} / ${H}</b>පැමිණි දින / පැවති දින</div><div><b>${k}</b>නොපැමිණීම්</div><div><b>${pctH(n-k,H)}</b>පැමිණීම</div></div>${n!=H?`<p class="warn">සටහන් කර ඇත්තේ දින ${n} ක් පමණි (පාසල් පැවති දින ${H})</p>`:""}`};
+
 /* ---------- දත්ත ---------- */
 async function loadSt(){const s=await getDocs(query(collection(db,"students"),where("classId","==",S.cid)));S.st=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.order-b.order)}
 async function loadAtt(){const d=await getDoc(doc(db,"attendance",S.cid+"_"+S.date));S.sub=d.exists();S.abs=new Set(d.exists()?d.data().absent.map(a=>a.id):[])}
@@ -203,7 +212,7 @@ async function loadRep(){const [a,b]=range(S.p,S.rd);
  const s=await getDocs(q);S.docs=s.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b).sort((x,y)=>x.date<y.date?-1:1);S.rng=[a,b];render()}
 async function loadSum(){const [a,b]=range(S.p,S.rd),cls=S.role=="admin"?(S.sc||(S.sc="1A")):S.cid;
  const [ss,as]=await Promise.all([getDocs(query(collection(db,"students"),where("classId","==",cls))),getDocs(query(collection(db,"attendance"),where("classId","==",cls)))]);
- S.sl=ss.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>x.order-y.order);
+ await loadHd();S.sl=ss.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>x.order-y.order);
  S.sdocs=as.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b).sort((x,y)=>x.date<y.date?-1:1);
  S.rng=[a,b];if(!S.sl.some(x=>x.id==S.ss))S.ss=S.sl[0]?S.sl[0].id:"";render()}
 async function loadReqs(){const s=await getDocs(collection(db,"requests"));S.reqs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))}
@@ -284,17 +293,17 @@ const WD=["ඉරිදා","සඳුදා","අඟහරුවාදා","බ
 const wdOf=d=>WD[new Date(d+"T00:00").getDay()];
 const isAbs=x=>x.absent.some(a=>a.id==S.ss);
 function stables(){const st=S.sl.find(x=>x.id==S.ss);if(!st)return[];
- const D=S.sdocs,n=D.length,k=D.filter(isAbs).length,T=[],nm=st.name;
+ const D=S.sdocs,n=D.length,k=D.filter(isAbs).length,T=[],nm=st.name,H=heldOf();
  if(S.p=="year"){
   const m={};D.forEach(x=>{const q=x.date.slice(0,7);m[q]=m[q]||{n:0,a:0};m[q].n++;if(isAbs(x))m[q].a++});
-  const rows=Object.keys(m).sort().map(q=>[q,m[q].n,m[q].a,m[q].n-m[q].a,pct(m[q].a,m[q].n)]);
-  rows.push(["එකතුව",n,k,n-k,pct(k,n)]);
-  T.push({title:nm+" — මාසික",head:["මාසය","සටහන් කළ දින","නොපැමිණි","පැමිණි","පැමිණීම %"],rows});
+  const rows=Object.keys(m).sort().map(q=>{const h=S.hd[q]??null,p=m[q].n-m[q].a;return[q,h??"-",m[q].n,m[q].a,p,pctH(p,h??m[q].n)]});
+  rows.push(["එකතුව",H??"-",n,k,n-k,pctH(n-k,H??n)]);
+  T.push({title:nm+" — මාසික",head:["මාසය","පැවති දින","සටහන් කළ දින","නොපැමිණි","පැමිණි","පැමිණීම %"],rows});
   T.push({title:"නොපැමිණි දින",head:["දිනය","දවස"],rows:D.filter(isAbs).map(x=>[x.date,wdOf(x.date)])});
  }else{
   const rows=D.map(x=>[x.date,wdOf(x.date),isAbs(x)?"නොපැමිණි":"පැමිණි"]);
   if(!rows.length)rows.push([S.rng[0],S.p=="day"?wdOf(S.rng[0]):"","සටහන් නැත"]);
-  else rows.push(["එකතුව","","පැමිණි "+(n-k)+" · නොපැමිණි "+k]);
+  else rows.push(["එකතුව","","පැමිණි "+(n-k)+(H!=null?" / "+H+" (පැවති දින)":"")+" · නොපැමිණි "+k]);
   T.push({title:nm,head:["දිනය","දවස","තත්ත්වය"],rows});
  }
  return T}
@@ -303,8 +312,9 @@ function vSum(){const adm=S.role=="admin",cls=adm?S.sc:S.cid,st=S.sl.find(x=>x.i
  ${adm?`<select data-c="sc" style="margin-bottom:8px">${CLASSES.map(c=>`<option value="${c.id}" ${S.sc==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
  <select data-c="ss" style="margin-bottom:8px">${S.sl.length?S.sl.map((x,i)=>`<option value="${x.id}" ${S.ss==x.id?"selected":""}>${i+1}. ${esc(x.name)}</option>`).join(""):'<option value="">සිසුන් නැත</option>'}</select>
  <div class="row"><select data-c="p">${PL.map(([q,v])=>`<option value="${q}" ${S.p==q?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
+ ${adm&&S.p=="month"?heldCard(S.rd.slice(0,7)):""}
  <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>
- ${st?`<div class="tiles"><div><b>${n}</b>සටහන් කළ දින</div><div><b>${k}</b>නොපැමිණීම්</div><div><b>${pct(k,n)}</b>පැමිණීම</div></div>${stables().map(tbl).join("")}${SIG}`:'<div class="card">මෙම පන්තියට සිසුන් නැත.</div>'}`}
+ ${st?`${tilesS(n,k)}${stables().map(tbl).join("")}${SIG}`:'<div class="card">මෙම පන්තියට සිසුන් නැත.</div>'}`}
 
 function vRep(){return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" පැමිණීම් සාරාංශය",S.role=="admin"?(S.cls!="all"?"පන්තිය "+cname(S.cls):"සියලු පන්ති"):"පන්තිය "+cname(S.cid))}<div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
  ${S.role=="admin"?`<select data-c="cls" style="margin-top:8px"><option value="all">සියලු පන්ති</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.cls==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
@@ -316,7 +326,7 @@ const MN=["ජනවාරි","පෙබරවාරි","මාර්තු","
 const WK=i=>(i+1)+" වෙනි සතිය";
 async function loadReg(){const cls=S.role=="admin"?(S.sc||(S.sc="1A")):S.cid;
  const [ss,as]=await Promise.all([getDocs(query(collection(db,"students"),where("classId","==",cls))),getDocs(query(collection(db,"attendance"),where("classId","==",cls)))]);
- S.sl=ss.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>x.order-y.order);
+ await loadHd();S.sl=ss.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>x.order-y.order);
  S.radocs=as.docs.map(d=>d.data()).filter(x=>{const w=new Date(x.date+"T00:00").getDay();return w>0&&w<6}).sort((x,y)=>x.date<y.date?-1:1);
  S.rng=range("month",S.rm+"-01");render()}
 function regModel(){
@@ -336,29 +346,29 @@ function regModel(){
   days.forEach(x=>{if(x.doc){any=true;at+=x.doc.absent.length;pt+=x.doc.total-x.doc.absent.length}});
   return{a,p,at:any?at:"",pt:any?pt:""}});
  const dd=W.flat().filter(x=>x.doc),att=dd.reduce((q,x)=>q+x.doc.total-x.doc.absent.length,0),abt=dd.reduce((q,x)=>q+x.doc.absent.length,0);
- return{W,rows,foot,days:dd.length,att,abt,avg:dd.length?(att/dd.length).toFixed(1):"-"}}
+ const held=S.hd[S.rm]??null,H=held??dd.length;return{W,rows,foot,days:dd.length,held,H,att,abt,avg:H?(att/H).toFixed(1):"-"}}
 function regYear(){const y=S.rm.slice(0,4);let dn=0,at=0;
  const rows=MN.map((nm,i)=>{const D=S.radocs.filter(x=>x.date.slice(0,7)==y+"-"+pad(i+1));if(!D.length)return[nm,"","","",""];
-  const a=D.reduce((q,x)=>q+x.total-x.absent.length,0);dn+=D.length;at+=a;
-  return[nm,D[D.length-1].total,a,D.length,(a/D.length).toFixed(1)]});
+  const a=D.reduce((q,x)=>q+x.total-x.absent.length,0);const h=S.hd[y+"-"+pad(i+1)]??D.length;dn+=h;at+=a;
+  return[nm,D[D.length-1].total,a,h,h?(a/h).toFixed(1):"-"]});
  rows.push(["එකතුව","",at,dn,dn?(at/dn).toFixed(1):"-"]);
  return{title:y+" වර්ෂය — පැමිණීම පිළිබඳ සාරාංශ වාර්තාව",head:["මාසය","සිසුන් ගණන","පැමිණීමේ මුළු වාර ගණන","පාසල් පැවති දින","සාමාන්‍ය පැමිණීම"],rows}}
 function vReg(){const adm=S.role=="admin",cls=adm?S.sc:S.cid,M=regModel(),mi=+S.rm.slice(5,7)-1,cell=v=>v===""?"":pad(v);
  const h1=M.W.map((d,i)=>`<th colspan="6">${WK(i)}</th>`).join(""),
  h2=M.W.map(d=>d.map(x=>`<th class="${x.in?"":"off"}">${x.in?pad(x.n):""}</th>`).join("")+'<th class="wt">එකතුව</th>').join(""),
- body=M.rows.map(r=>`<tr><td>${r.n}</td><td class="nm">${esc(r.name)}</td>${r.wk.map((w,wi)=>w.c.map((v,di)=>`<td class="${v===0?"z":""}${M.W[wi][di].in?"":" off"}">${v}</td>`).join("")+`<td class="wt">${cell(w.t)}</td>`).join("")}<td class="wt">${M.days?pad(r.tot):""}</td></tr>`).join(""),
- ft=(lab,k,kt,tot)=>`<tr class="ft"><td colspan="2" style="text-align:left">${lab}</td>${M.foot.map((f,wi)=>f[k].map((v,di)=>`<td class="${M.W[wi][di].in?"":"off"}">${cell(v)}</td>`).join("")+`<td class="wt">${cell(f[kt])}</td>`).join("")}<td class="wt">${M.days?pad(tot):""}</td></tr>`;
+ body=M.rows.map(r=>`<tr><td>${r.n}</td><td class="nm">${esc(r.name)}</td>${r.wk.map((w,wi)=>w.c.map((v,di)=>`<td class="${v===0?"z":""}${M.W[wi][di].in?"":" off"}">${v}</td>`).join("")+`<td class="wt">${cell(w.t)}</td>`).join("")}<td class="wt">${M.days?pad(r.tot):""}</td><td class="wt">${M.days?r.tot+" / "+M.H:""}</td></tr>`).join(""),
+ ft=(lab,k,kt,tot)=>`<tr class="ft"><td colspan="2" style="text-align:left">${lab}</td>${M.foot.map((f,wi)=>f[k].map((v,di)=>`<td class="${M.W[wi][di].in?"":"off"}">${cell(v)}</td>`).join("")+`<td class="wt">${cell(f[kt])}</td>`).join("")}<td class="wt">${M.days?pad(tot):""}</td><td class="wt"></td></tr>`;
  return `<div class="regw">${PH("පන්ති පැමිණීම් ලේඛනය","පන්තිය "+cname(cls)+" · "+MN[mi])}<div class="card noprint">
  ${adm?`<select data-c="sc" style="margin-bottom:8px">${CLASSES.map(c=>`<option value="${c.id}" ${S.sc==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
  <input type="month" value="${S.rm}" data-c="rm"><div class="row" style="flex-wrap:wrap;margin-top:8px"><button class="sec" data-a="pdf">PDF / මුද්‍රණය</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div>
- <p style="margin:8px 0 0;font-size:13px">1 = පැමිණි, <span class="warn">0</span> = නොපැමිණි. යවා ඇති දින පමණක් පෙන්වයි (සඳුදා–සිකුරාදා).</p></div>
- ${M.rows.length?`<div class="card"><h3>${MN[mi]} — ${S.rm.slice(0,4)}</h3><div class="w"><table class="reg"><tr><th rowspan="2">අංක</th><th rowspan="2" style="min-width:150px">සිසුන්ගේ නම</th>${h1}<th rowspan="2" class="wt">මාසික<br>එකතුව</th></tr><tr>${h2}</tr>${body}${ft("නොපැමිණි","a","at",M.abt)}${ft("පැමිණි","p","pt",M.att)}</table></div>
- <p style="margin:10px 0 0"><b>පාසල් පැවති දින:</b> ${M.days} &nbsp;·&nbsp; <b>පැමිණීමේ මුළු වාර ගණන:</b> ${M.att} &nbsp;·&nbsp; <b>සාමාන්‍ය පැමිණීම:</b> ${M.avg}</p></div>
+ ${adm?heldCard(S.rm):""}<p style="margin:8px 0 0;font-size:13px">1 = පැමිණි, <span class="warn">0</span> = නොපැමිණි. යවා ඇති දින පමණක් පෙන්වයි (සඳුදා–සිකුරාදා).</p></div>
+ ${M.rows.length?`<div class="card"><h3>${MN[mi]} — ${S.rm.slice(0,4)}</h3><div class="w"><table class="reg"><tr><th rowspan="2">අංක</th><th rowspan="2" style="min-width:150px">සිසුන්ගේ නම</th>${h1}<th rowspan="2" class="wt">මාසික<br>එකතුව</th><th rowspan="2" class="wt">පැමිණි /<br>පැවති දින</th></tr><tr>${h2}</tr>${body}${ft("නොපැමිණි","a","at",M.abt)}${ft("පැමිණි","p","pt",M.att)}</table></div>
+ <p style="margin:10px 0 0"><b>පාසල් පැවති දින:</b> ${M.H}${M.held==null?' <span class="warn">(කාර්යාලය තවම ඇතුළත් කර නැත — සටහන් කළ දින පෙන්වයි)</span>':""} &nbsp;·&nbsp; <b>පැමිණීමේ මුළු වාර ගණන:</b> ${M.att} &nbsp;·&nbsp; <b>සාමාන්‍ය පැමිණීම:</b> ${M.avg}</p></div>
  <div class="regy">${tbl(regYear())}</div>${SIG}`:'<div class="card">මෙම පන්තියට සිසුන් නැත.</div>'}</div>`}
 function regTables(){const M=regModel(),mi=+S.rm.slice(5,7)-1;
- const head=["අංක","නම",...M.W.flatMap((d,i)=>[...d.map(x=>WK(i)+" "+(x.in?pad(x.n):"-")),WK(i)+" එකතුව"]),"මාසික එකතුව"];
- const c=v=>v===""?"":pad(v),rows=M.rows.map(r=>[r.n,r.name,...r.wk.flatMap(w=>[...w.c,c(w.t)]),M.days?pad(r.tot):""]);
- const f=(lab,k,kt,tot)=>[ "",lab,...M.foot.flatMap(x=>[...x[k].map(c),c(x[kt])]),M.days?pad(tot):""];
+ const head=["අංක","නම",...M.W.flatMap((d,i)=>[...d.map(x=>WK(i)+" "+(x.in?pad(x.n):"-")),WK(i)+" එකතුව"]),"මාසික එකතුව","පැමිණි / පැවති දින"];
+ const c=v=>v===""?"":pad(v),rows=M.rows.map(r=>[r.n,r.name,...r.wk.flatMap(w=>[...w.c,c(w.t)]),M.days?pad(r.tot):"",M.days?r.tot+" / "+M.H:""]);
+ const f=(lab,k,kt,tot)=>[ "",lab,...M.foot.flatMap(x=>[...x[k].map(c),c(x[kt])]),M.days?pad(tot):"",""];
  rows.push(f("නොපැමිණි","a","at",M.abt),f("පැමිණි","p","pt",M.att));
  return[{title:"ලේඛනය "+MN[mi],head,rows},regYear()]}
 
@@ -545,6 +555,10 @@ app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(
  if(a=="udel"){await deleteDoc(doc(db,"unitStudents",S.unit+"_"+id));await loadRoster();return render()}
  if(a=="pdf"){const o=document.title;document.title="පැමිණීම_"+S.p+"_"+S.rng[0];window.print();document.title=o;return}
  if(a=="xls")return toXls();
+ if(a=="savehd"){if(S.role!="admin")return;const raw=$("#hdv").value.trim();
+  if(raw===""){await deleteDoc(doc(db,"schoolDays",id));delete S.hd[id];toast("ඉවත් කළා")}
+  else{const n=+raw;if(!Number.isInteger(n)||n<0||n>31)return toast("0–31 අතර සංඛ්‍යාවක් ඇතුළත් කරන්න");await setDoc(doc(db,"schoolDays",id),{days:n,by:S.u.email,at:Date.now()});S.hd[id]=n;toast("සුරකින ලදී ✓")}
+  return render()}
  if(a=="qr")return showQR();
  if(a=="csv"){const out=tables().map(t=>[t.title||"",t.head,...t.rows].map(r=>[].concat(r).map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n")).join("\n\n");
   const l=document.createElement("a");l.href=URL.createObjectURL(new Blob(["\ufeff"+out],{type:"text/csv"}));l.download="attendance_"+S.p+"_"+S.rng[0]+".csv";l.click();return}
