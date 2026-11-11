@@ -173,11 +173,11 @@ const SCHOOL="බ/ඩෙන්සිල් කොබ්බෑකඩුව මහ
 const ADDRESS="හාලිඇල"; // පූර්ණ ලිපිනය මෙහි ලියන්න (උදා: "හාලිඇල, බදුල්ල")
 const BANNER=`<div class="banner"><img src="logo.png" alt=""><h1>${SCHOOL}</h1><div class="addr">${ADDRESS}</div><h2>දෛනික සිසු පැමිණීම සටහන් කිරීමේ පද්ධතිය</h2></div>`;
 const ADMINS=["sudanchamalka@gmail.com"]; // කාර්යාලයේ ඊමේල් (firestore.rules හි ද එසේම දමන්න)
-const ABC_UPTO=6;                     // 1 සිට මෙම ශ්‍රේණිය දක්වා A,B,C පන්ති 3ක් (ඉන් ඉහළ ශ්‍රේණි A,B පන්ති 2ක්)
+const ABC_FROM=6,ABC_TO=6;                     // 1 සිට මෙම ශ්‍රේණිය දක්වා A,B,C පන්ති 3ක් (ඉන් ඉහළ ශ්‍රේණි A,B පන්ති 2ක්)
 /* ======================================================== */
 
 const app0=initializeApp(CFG),auth=getAuth(app0),db=getFirestore(app0);
-const CLASSES=[];for(let g=1;g<=13;g++)(g<=ABC_UPTO?["A","B","C"]:["A","B"]).forEach(s=>CLASSES.push({id:g+s,name:g+" "+s}));
+const CLASSES=[];for(let g=1;g<=13;g++)(g>=ABC_FROM&&g<=ABC_TO?["A","B","C"]:["A","B"]).forEach(s=>CLASSES.push({id:g+s,name:g+" "+s}));
 const cname=id=>(CLASSES.find(c=>c.id==id)||{name:id}).name;
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -380,7 +380,7 @@ function regTables(){const M=regModel(),mi=+S.rm.slice(5,7)-1;
  return[{title:"ලේඛනය "+MN[mi],head,rows},regYear()]}
 
 /* ---------- විෂය ඒකක ---------- */
-const UNITS=[["com","පරිගණක ඒකකය"],["mus","සංගීත කාමරය"],["sci","විද්‍යාගාරය"],["dan","නැටුම් කාමරය"],["art","චිත්‍ර කාමරය"],["smt","ස්මාර්ට් කාමරය"]];
+const UNITS=[["com","පරිගණක ඒකකය"],["mus","සංගීත කාමරය"],["sci","විද්‍යාගාරය"],["dan","නැටුම් කාමරය"],["art","චිත්‍ර කාමරය"],["smt","ස්මාර්ට් කාමරය"],["lib","පුස්තකාලය"]];
 const PERIODS=8; // දිනකට කාලච්ඡේද ගණන
 const uname=id=>(UNITS.find(u=>u[0]==id)||[0,id])[1];
 const cord=(a,b)=>parseInt(a)-parseInt(b)||(a<b?-1:a>b?1:0);
