@@ -225,9 +225,7 @@ function vLogin(){const reg=S.lm=="reg";
 <label>ඊමේල්<input type="email" id="re" autocomplete="username" required></label>
 <label>මුරපදය (අකුරු 6+)<input type="password" id="rp" autocomplete="new-password" minlength="6" required></label>
 <label>මුරපදය නැවත<input type="password" id="rp2" autocomplete="new-password" minlength="6" required></label>
-<label>පන්ති භාරය (තිබේ නම්)<select id="rk"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select></label>
-<div style="margin-bottom:10px"><b style="font-size:14px">ඒකක භාරය (තිබේ නම්)</b><br>${unitChk("rqn",[])}</div>
-<p style="margin:0 0 10px;font-size:13px">ඔබගේ ඉල්ලීම කාර්යාලයට යැවෙනු ඇත. අනුමත කළ පසුව පමණක් පද්ධතියට ඇතුල් විය හැක.</p>
+<p style="margin:0 0 10px;font-size:13px">ඔබගේ ඉල්ලීම කාර්යාලයට යැවෙනු ඇත. පන්තිය/ඒකක ලබා දෙන්නේ කාර්යාලය විසිනි; අනුමත කළ පසුව පමණක් පද්ධතියට ඇතුල් විය හැක.</p>
 <button class="pri" type="submit">ලියාපදිංචි වීමට ඉල්ලන්න</button></form>`
  :`<form id="lg" class="card"><h3>ඇතුල් වන්න</h3>${tabs}
 <label>ඊමේල්<input type="email" id="le" autocomplete="username" required></label>
@@ -366,7 +364,7 @@ async function go(t){S.tab=t;render();
 let regBusy=false;
 app.addEventListener("submit",async e=>{e.preventDefault();
  if(e.target.id=="rg"){
-  const n=$("#rn").value.trim(),m=$("#re").value.trim(),p=$("#rp").value,k=$("#rk").value,us=[...document.querySelectorAll(".rqn:checked")].map(x=>x.value);
+  const n=$("#rn").value.trim(),m=$("#re").value.trim(),p=$("#rp").value,k="",us=[];
   if(!n)return toast("නම ඇතුළත් කරන්න");
   if(p.length<6)return toast("මුරපදය අකුරු 6ක් හෝ වැඩි විය යුතුයි");
   if(p!==$("#rp2").value)return toast("මුරපද දෙක ගැළපෙන්නේ නැත");
