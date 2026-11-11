@@ -133,6 +133,11 @@ header{padding:6px 14px}header span{font-size:13px;opacity:.9}
 nav{overflow-x:auto}nav button{flex:1 0 auto;padding:12px 14px;white-space:nowrap}
 .chk{display:inline-flex;gap:6px;align-items:center;font-weight:400;margin:0 12px 6px 0;font-size:14px}
 .chk input{width:18px;height:18px}
+.lt{display:flex;gap:6px;background:#eef1fb;border-radius:12px;padding:4px;margin-bottom:12px}
+.lt button{flex:1;border:0;background:transparent;padding:10px 6px;border-radius:9px;font:inherit;font-weight:700;color:#556}
+.lt button.on{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.14);color:#0b1f6b}
+.rrow{border-bottom:1px solid #e3e6f2;padding:10px 0}
+.rrow:last-child{border-bottom:0}
 </style>
 </head>
 <body>
@@ -159,7 +164,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const pad=n=>String(n).padStart(2,"0"),ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const pct=(a,t)=>t?(100-a/t*100).toFixed(1)+"%":"-";
 const PL=[["day","දිනපතා"],["week","සතිපතා"],["month","මාසික"],["year","වාර්ෂික"]];
-const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:""};
+const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:"",reqs:[],req:null,lm:"in"};
 
 const FOOT=p=>`<footer style="padding-bottom:${p}px">Created By R.M.S.Chamalka</footer>`;
 function toast(m){const t=$("#t");t.textContent=m;t.style.display="block";clearTimeout(toast.k);toast.k=setTimeout(()=>t.style.display="none",2800)}
@@ -176,7 +181,8 @@ async function loadAtt(){const d=await getDoc(doc(db,"attendance",S.cid+"_"+S.da
 async function loadRep(){const [a,b]=range(S.p,S.rd);
  const q=S.role=="admin"?query(collection(db,"attendance"),where("date",">=",a),where("date","<=",b)):query(collection(db,"attendance"),where("classId","==",S.cid));
  const s=await getDocs(q);S.docs=s.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b).sort((x,y)=>x.date<y.date?-1:1);S.rng=[a,b];render()}
-async function loadUsers(){const s=await getDocs(collection(db,"users"));S.users=s.docs.map(d=>({id:d.id,...d.data()}));render()}
+async function loadReqs(){const s=await getDocs(collection(db,"requests"));S.reqs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))}
+async function loadUsers(){const s=await getDocs(collection(db,"users"));S.users=s.docs.map(d=>({id:d.id,...d.data()}));try{await loadReqs()}catch(x){console.error(x)}render()}
 
 /* ---------- සාරාංශ වගු ---------- */
 function tables(){if(S.tab=="ur")return utables();
@@ -212,10 +218,29 @@ function tables(){if(S.tab=="ur")return utables();
 /* ---------- දර්ශන ---------- */
 const tbl=t=>`<div class="card">${t.title?`<h3>${esc(t.title)}</h3>`:""}<div class="w"><table><tr>${t.head.map(h=>`<th>${h}</th>`).join("")}</tr>${t.rows.length?t.rows.map(r=>`<tr class="${r[0]==="එකතුව"?"tot":""}">${r.map(c=>`<td class="${c==="යවා නැත"?"warn":""}">${esc(c)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${t.head.length}">දත්ත නැත</td></tr>`}</table></div></div>`;
 
-function vLogin(){return `<main style="padding-top:0">${BANNER}<form id="lg" class="card"><h3>ඇතුල් වන්න</h3>
+function vLogin(){const reg=S.lm=="reg";
+ const tabs=`<div class="lt"><button type="button" class="${reg?"":"on"}" data-a="lm" data-id="in">ඇතුල් වන්න</button><button type="button" class="${reg?"on":""}" data-a="lm" data-id="reg">ලියාපදිංචි වන්න</button></div>`;
+ const form=reg?`<form id="rg" class="card"><h3>ගුරු ගිණුමක් සාදන්න</h3>${tabs}
+<label>නම<input id="rn" autocomplete="name" required></label>
+<label>ඊමේල්<input type="email" id="re" autocomplete="username" required></label>
+<label>මුරපදය (අකුරු 6+)<input type="password" id="rp" autocomplete="new-password" minlength="6" required></label>
+<label>මුරපදය නැවත<input type="password" id="rp2" autocomplete="new-password" minlength="6" required></label>
+<label>පන්ති භාරය (තිබේ නම්)<select id="rk"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select></label>
+<div style="margin-bottom:10px"><b style="font-size:14px">ඒකක භාරය (තිබේ නම්)</b><br>${unitChk("rqn",[])}</div>
+<p style="margin:0 0 10px;font-size:13px">ඔබගේ ඉල්ලීම කාර්යාලයට යැවෙනු ඇත. අනුමත කළ පසුව පමණක් පද්ධතියට ඇතුල් විය හැක.</p>
+<button class="pri" type="submit">ලියාපදිංචි වීමට ඉල්ලන්න</button></form>`
+ :`<form id="lg" class="card"><h3>ඇතුල් වන්න</h3>${tabs}
 <label>ඊමේල්<input type="email" id="le" autocomplete="username" required></label>
 <label>මුරපදය<input type="password" id="lp" autocomplete="current-password" required></label>
-<div class="row"><button class="pri" type="submit">ඇතුල් වන්න</button><button class="sec" type="button" data-a="reset">මුරපදය අමතකද?</button></div></form><p style="text-align:center"><button class="lnk" data-a="qr">QR කේතය පෙන්වන්න</button></p></main>${FOOT(16)}`}
+<div class="row"><button class="pri" type="submit">ඇතුල් වන්න</button><button class="sec" type="button" data-a="reset">මුරපදය අමතකද?</button></div></form>`;
+ return `<main style="padding-top:0">${BANNER}${form}<p style="text-align:center"><button class="lnk" data-a="qr">QR කේතය පෙන්වන්න</button></p></main>${FOOT(16)}`}
+
+function vPending(){const r=S.req,rej=r&&r.status=="rejected";
+ const t=rej?"ඉල්ලීම ප්‍රතික්ෂේප කර ඇත":r?"අනුමැතිය බලාපොරොත්තුවෙන්":"ප්‍රවේශය නැත";
+ const m=rej?"ඔබගේ ලියාපදිංචි ඉල්ලීම කාර්යාලය විසින් ප්‍රතික්ෂේප කර ඇත. වැඩි විස්තර සඳහා කාර්යාලය අමතන්න."
+  :r?"ඔබගේ ඉල්ලීම කාර්යාලයට යවා ඇත ("+esc(r.name||"")+"). කාර්යාලය අනුමත කළ පසු ඔබට පද්ධතියට ඇතුල් විය හැක."
+  :"ඔබගේ ගිණුමට තවම ප්‍රවේශයක් ලබා දී නැත. කාර්යාලය අමතන්න.";
+ return `<header><span>${esc(S.u.email)}</span><div class="row"><button class="lnk" data-a="out">පිටවන්න</button></div></header>${BANNER}<main><div class="card" style="text-align:center"><h3>${t}</h3><p>${m}</p>${rej?"":'<button class="pri" data-a="recheck">නැවත පරීක්ෂා කරන්න</button>'}</div></main>${FOOT(16)}`}
 
 const cnt=()=>`සිසුන් ${S.st.length} · නොපැමිණි <b>${S.abs.size}</b> · පැමිණි <b>${S.st.length-S.abs.size}</b>`;
 function vMark(){const n=S.st.length;
@@ -244,7 +269,7 @@ const cord=(a,b)=>parseInt(a)-parseInt(b)||(a<b?-1:a>b?1:0);
 const ucl=()=>[...new Set(S.ur.map(x=>x.classId))].sort(cord);
 const uro=()=>S.ur.filter(x=>x.classId==S.ucls);
 const ucnt=()=>`සිසුන් ${uro().length} · නොපැමිණි <b>${S.uabs.size}</b> · පැමිණි <b>${uro().length-S.uabs.size}</b>`;
-const tabsFor=()=>S.role=="admin"?[["rep","සාරාංශ"],["ur","ඒකක සාරාංශ"],["usr","ගුරුවරු"]]:[...(S.cid?[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"]]:[]),...(S.units.length?[["um","ඒකක"],["ul","ඒකක සිසුන්"],["ur","ඒකක සාරාංශ"]]:[])];
+const tabsFor=()=>S.role=="admin"?[["rep","සාරාංශ"],["ur","ඒකක සාරාංශ"],["usr","ගුරුවරු"+(S.reqs.some(r=>r.status!="rejected")?" 🔔"+S.reqs.filter(r=>r.status!="rejected").length:"")]]:[...(S.cid?[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"]]:[]),...(S.units.length?[["um","ඒකක"],["ul","ඒකක සිසුන්"],["ur","ඒකක සාරාංශ"]]:[])];
 const usel=()=>S.units.length>1?`<label>ඒකකය<select data-c="unit">${S.units.map(u=>`<option value="${u}" ${S.unit==u?"selected":""}>${uname(u)}</option>`).join("")}</select></label>`:`<h3 style="margin:0">${uname(S.unit)}</h3>`;
 const unitChk=(cls,sel,live)=>UNITS.map(([id,n])=>`<label class="chk"><input type="checkbox" class="${cls}" value="${id}" ${sel.includes(id)?"checked":""} ${live?'data-c="uu"':""}>${n}</label>`).join("");
 const SIG='<div class="sig"><div>සකස් කළේ</div><div>පන්ති/ඒකක භාර ගුරුවරයා</div><div>විදුහල්පති</div></div><div class="pf">Created By R.M.S.Chamalka</div>';
@@ -288,7 +313,13 @@ function vUr(){const adm=S.role=="admin";
  <select data-c="uf" style="margin-top:8px">${adm?'<option value="all">සියලු ඒකක</option>':""}${(adm?UNITS.map(u=>u[0]):S.units).map(u=>`<option value="${u}" ${S.uf==u?"selected":""}>${uname(u)}</option>`).join("")}</select>
  <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${ustats()}${utables().map(tbl).join("")}${SIG}`}
 
-function vUsers(){return `<div class="card"><h3>නව ගිණුමක්</h3><label>නම<input id="un"></label><label>ඊමේල්<input type="email" id="ue"></label><label>තාවකාලික මුරපදය (අකුරු 6+)<input id="up"></label>
+function vReqs(){const P=S.reqs.filter(r=>r.status!="rejected"),X=S.reqs.filter(r=>r.status=="rejected");
+ return `<div class="card"><h3>ලියාපදිංචි ඉල්ලීම් (${P.length})</h3>${P.length?"":'<p style="margin:0">අලුත් ඉල්ලීම් නැත</p>'}${P.map(r=>`<div class="rrow" data-uid="${r.id}"><div><b>${esc(r.name||"")}</b><br><small>${esc(r.email||"")} · ${r.createdAt?ymd(new Date(r.createdAt)):""}</small></div>
+ <select class="rqc" style="margin-top:6px"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}" ${r.classId==c.id?"selected":""}>${c.name}</option>`).join("")}</select>
+ <div style="margin:4px 0 8px">${unitChk("rqu",r.units||[])}</div>
+ <div class="row"><button class="pri" data-a="approve" data-id="${r.id}">අනුමත කරන්න</button><button class="sec" style="color:#c0392b;border-color:#c0392b" data-a="reject" data-id="${r.id}">ප්‍රතික්ෂේප</button></div></div>`).join("")}
+ ${X.length?`<h3 style="margin-top:14px;font-size:15px">ප්‍රතික්ෂේප කළ (${X.length})</h3>`+X.map(r=>`<div class="rrow"><div class="row"><div style="flex:1">${esc(r.name||"")}<br><small>${esc(r.email||"")}</small></div><button class="sec" style="padding:6px 10px" data-a="delreq" data-id="${r.id}">මකන්න</button></div></div>`).join(""):""}</div>`}
+function vUsers(){return `${vReqs()}<div class="card"><h3>නව ගිණුමක්</h3><label>නම<input id="un"></label><label>ඊමේල්<input type="email" id="ue"></label><label>තාවකාලික මුරපදය (අකුරු 6+)<input id="up"></label>
  <label>භූමිකාව<select id="urole"><option value="teacher">ගුරුවරයා</option><option value="admin">කාර්යාලය (පරිපාලක)</option></select></label>
  <label>පන්ති භාරය<select id="uk"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select></label>
  <div style="margin-bottom:10px"><b style="font-size:14px">ඒකක භාරය</b><br>${unitChk("nu",[])}</div><button class="pri" data-a="adduser">ගිණුම සාදන්න</button></div>
@@ -296,6 +327,7 @@ function vUsers(){return `<div class="card"><h3>නව ගිණුමක්</h3
 
 function render(){
  if(!S.u){app.innerHTML=vLogin();return}
+ if(!S.role){app.innerHTML=vPending();return}
  const adm=S.role=="admin",tabs=tabsFor();
  let body;
  if(!tabs.length)body='<div class="card">ඔබගේ ගිණුමට පන්තියක් හෝ ඒකකයක් ලබා දී නැත. කාර්යාලය අමතන්න.</div>';
@@ -331,7 +363,23 @@ async function go(t){S.tab=t;render();
  if(t=="ul"){await loadRoster();render()}
  if(t=="ur")await loadUrep()}
 
+let regBusy=false;
 app.addEventListener("submit",async e=>{e.preventDefault();
+ if(e.target.id=="rg"){
+  const n=$("#rn").value.trim(),m=$("#re").value.trim(),p=$("#rp").value,k=$("#rk").value,us=[...document.querySelectorAll(".rqn:checked")].map(x=>x.value);
+  if(!n)return toast("නම ඇතුළත් කරන්න");
+  if(p.length<6)return toast("මුරපදය අකුරු 6ක් හෝ වැඩි විය යුතුයි");
+  if(p!==$("#rp2").value)return toast("මුරපද දෙක ගැළපෙන්නේ නැත");
+  regBusy=true;
+  try{
+   const c=await createUserWithEmailAndPassword(auth,m,p);
+   try{await setDoc(doc(db,"requests",c.user.uid),{name:n,email:m,classId:k,units:us,status:"pending",createdAt:Date.now()})}
+   catch(x){console.error(x);await c.user.delete().catch(()=>{});throw x}
+   regBusy=false;toast("ඉල්ලීම කාර්යාලයට යවන ලදී");await boot(auth.currentUser)
+  }catch(x){regBusy=false;console.error(x);
+   toast(x.code=="auth/email-already-in-use"?"මෙම ඊමේල් දැනටමත් ඇත":x.code=="auth/weak-password"?"මුරපදය දුර්වලයි":x.code=="auth/invalid-email"?"ඊමේල් ලිපිනය වැරදියි":"දෝෂයකි — යළි උත්සාහ කරන්න");
+   if(!auth.currentUser){S.u=null;render()}}
+  return}
  try{await signInWithEmailAndPassword(auth,$("#le").value.trim(),$("#lp").value)}catch{toast("ඊමේල් හෝ මුරපදය වැරදියි")}});
 
 app.addEventListener("change",async e=>{const c=e.target.dataset.c;if(!c)return;const v=e.target.value;
@@ -350,7 +398,17 @@ app.addEventListener("change",async e=>{const c=e.target.dataset.c;if(!c)return;
 app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(!el)return;const a=el.dataset.a,id=el.dataset.id;
  try{
  if(a=="tab")return go(id);
- if(a=="out")return signOut(auth);
+ if(a=="out"){S.lm="in";S.reqs=[];return signOut(auth)}
+ if(a=="lm"){S.lm=id;return render()}
+ if(a=="recheck"){await boot(auth.currentUser);return}
+ if(a=="approve"||a=="reject"||a=="delreq"){
+  if(S.role!="admin")return;const r=S.reqs.find(x=>x.id==id);if(!r)return;
+  if(a=="approve"){const row=el.closest(".rrow"),k=row.querySelector(".rqc").value,us=[...row.querySelectorAll(".rqu:checked")].map(x=>x.value);
+   await setDoc(doc(db,"users",id),{email:r.email,name:r.name,role:"teacher",classId:k,units:us});
+   await deleteDoc(doc(db,"requests",id));toast(r.name+" අනුමත කරන ලදී")}
+  else if(a=="reject"){if(!confirm(r.name+" ගේ ඉල්ලීම ප්‍රතික්ෂේප කරන්නද?"))return;await setDoc(doc(db,"requests",id),{status:"rejected"},{merge:true});toast("ප්‍රතික්ෂේප කරන ලදී")}
+  else{await deleteDoc(doc(db,"requests",id))}
+  return loadUsers()}
  if(a=="reset"){const m=$("#le").value.trim();if(!m)return toast("ඊමේල් ඇතුළත් කරන්න");await sendPasswordResetEmail(auth,m);return toast("මුරපද වෙනස් කිරීමේ ඊමේලය යැවිණි")}
  if(a=="tog"){S.abs.has(id)?S.abs.delete(id):S.abs.add(id);el.classList.toggle("ab");$("#cnt").innerHTML=cnt();return}
  if(a=="fl")return el.classList.toggle("ab");
@@ -408,13 +466,16 @@ app.addEventListener("keydown",e=>{if((e.key=="Enter"||e.key==" ")&&e.target.cla
   if(!still)requestAnimationFrame(f)}
  f()})();
 
-onAuthStateChanged(auth,async u=>{
+async function boot(u){
  if(!u){S.u=null;return render()}
- S.u=u;let r=null;
+ S.u=u;S.req=null;let r=null;
  try{const d=await getDoc(doc(db,"users",u.uid));r=d.exists()?d.data():null}catch{}
  S.role=ADMINS.includes(u.email)?"admin":(r&&r.role);S.cid=(r&&r.classId)||"";S.units=(r&&r.units)||[];S.unit=S.units[0]||"";S.uf=S.role=="admin"?"all":S.unit;
+ if(!S.role){try{const q=await getDoc(doc(db,"requests",u.uid));S.req=q.exists()?q.data():null}catch{}}
+ else if(S.role=="admin"){try{await loadReqs()}catch(x){console.error(x)}}
  const T=tabsFor();S.tab=T.length?T[0][0]:"";render();
- try{if(S.tab)await go(S.tab)}catch(x){console.error(x)}});
+ try{if(S.tab)await go(S.tab)}catch(x){console.error(x)}}
+onAuthStateChanged(auth,u=>{if(regBusy)return;boot(u)});
 
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
 </script>
