@@ -164,7 +164,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const pad=n=>String(n).padStart(2,"0"),ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const pct=(a,t)=>t?(100-a/t*100).toFixed(1)+"%":"-";
 const PL=[["day","දිනපතා"],["week","සතිපතා"],["month","මාසික"],["year","වාර්ෂික"]];
-const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:"",reqs:[],req:null,lm:"in"};
+const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:"",reqs:[],req:null,lm:"in",sc:"1A",ss:"",sl:[],sdocs:[]};
 
 const FOOT=p=>`<footer style="padding-bottom:${p}px">Created By R.M.S.Chamalka</footer>`;
 function toast(m){const t=$("#t");t.textContent=m;t.style.display="block";clearTimeout(toast.k);toast.k=setTimeout(()=>t.style.display="none",2800)}
@@ -181,11 +181,16 @@ async function loadAtt(){const d=await getDoc(doc(db,"attendance",S.cid+"_"+S.da
 async function loadRep(){const [a,b]=range(S.p,S.rd);
  const q=S.role=="admin"?query(collection(db,"attendance"),where("date",">=",a),where("date","<=",b)):query(collection(db,"attendance"),where("classId","==",S.cid));
  const s=await getDocs(q);S.docs=s.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b).sort((x,y)=>x.date<y.date?-1:1);S.rng=[a,b];render()}
+async function loadSum(){const [a,b]=range(S.p,S.rd),cls=S.role=="admin"?(S.sc||(S.sc="1A")):S.cid;
+ const [ss,as]=await Promise.all([getDocs(query(collection(db,"students"),where("classId","==",cls))),getDocs(query(collection(db,"attendance"),where("classId","==",cls)))]);
+ S.sl=ss.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>x.order-y.order);
+ S.sdocs=as.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b).sort((x,y)=>x.date<y.date?-1:1);
+ S.rng=[a,b];if(!S.sl.some(x=>x.id==S.ss))S.ss=S.sl[0]?S.sl[0].id:"";render()}
 async function loadReqs(){const s=await getDocs(collection(db,"requests"));S.reqs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))}
 async function loadUsers(){const s=await getDocs(collection(db,"users"));S.users=s.docs.map(d=>({id:d.id,...d.data()}));try{await loadReqs()}catch(x){console.error(x)}render()}
 
 /* ---------- සාරාංශ වගු ---------- */
-function tables(){if(S.tab=="ur")return utables();
+function tables(){if(S.tab=="sum")return stables();if(S.tab=="ur")return utables();
  const cur=S.role=="admin"?S.cls:S.cid,T=[];
  if(cur=="all"){
   const by={};S.docs.forEach(x=>(by[x.classId]=by[x.classId]||[]).push(x));
@@ -255,6 +260,32 @@ function clsCards(){const by={};S.docs.forEach(x=>by[x.classId]=x);
 function vStu(){return `<div class="card"><label>නම් ඇතුළත් කරන්න (පේළියකට එක නමක්)<textarea id="nn" rows="5"></textarea></label><button class="pri" data-a="addst">එකතු කරන්න</button></div>
  <div class="card" style="padding:0">${S.st.length?S.st.map((s,i)=>`<div class="st" style="cursor:default"><span>${i+1}</span><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="edst" data-id="${s.id}" aria-label="වෙනස් කරන්න">✎</button><button class="x" data-a="delst" data-id="${s.id}" aria-label="මකන්න">✕</button></div>`).join(""):'<p style="padding:14px">තවම සිසුන් නැත.</p>'}</div>`}
 
+const WD=["ඉරිදා","සඳුදා","අඟහරුවාදා","බදාදා","බ්‍රහස්පතින්දා","සිකුරාදා","සෙනසුරාදා"];
+const wdOf=d=>WD[new Date(d+"T00:00").getDay()];
+const isAbs=x=>x.absent.some(a=>a.id==S.ss);
+function stables(){const st=S.sl.find(x=>x.id==S.ss);if(!st)return[];
+ const D=S.sdocs,n=D.length,k=D.filter(isAbs).length,T=[],nm=st.name;
+ if(S.p=="year"){
+  const m={};D.forEach(x=>{const q=x.date.slice(0,7);m[q]=m[q]||{n:0,a:0};m[q].n++;if(isAbs(x))m[q].a++});
+  const rows=Object.keys(m).sort().map(q=>[q,m[q].n,m[q].a,m[q].n-m[q].a,pct(m[q].a,m[q].n)]);
+  rows.push(["එකතුව",n,k,n-k,pct(k,n)]);
+  T.push({title:nm+" — මාසික",head:["මාසය","සටහන් කළ දින","නොපැමිණි","පැමිණි","පැමිණීම %"],rows});
+  T.push({title:"නොපැමිණි දින",head:["දිනය","දවස"],rows:D.filter(isAbs).map(x=>[x.date,wdOf(x.date)])});
+ }else{
+  const rows=D.map(x=>[x.date,wdOf(x.date),isAbs(x)?"නොපැමිණි":"පැමිණි"]);
+  if(!rows.length)rows.push([S.rng[0],S.p=="day"?wdOf(S.rng[0]):"","සටහන් නැත"]);
+  else rows.push(["එකතුව","","පැමිණි "+(n-k)+" · නොපැමිණි "+k]);
+  T.push({title:nm,head:["දිනය","දවස","තත්ත්වය"],rows});
+ }
+ return T}
+function vSum(){const adm=S.role=="admin",cls=adm?S.sc:S.cid,st=S.sl.find(x=>x.id==S.ss),n=S.sdocs.length,k=st?S.sdocs.filter(isAbs).length:0;
+ return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" සිසු පැමිණීම් සාරාංශය",(st?esc(st.name)+" · ":"")+"පන්තිය "+cname(cls))}<div class="card noprint">
+ ${adm?`<select data-c="sc" style="margin-bottom:8px">${CLASSES.map(c=>`<option value="${c.id}" ${S.sc==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
+ <select data-c="ss" style="margin-bottom:8px">${S.sl.length?S.sl.map((x,i)=>`<option value="${x.id}" ${S.ss==x.id?"selected":""}>${i+1}. ${esc(x.name)}</option>`).join(""):'<option value="">සිසුන් නැත</option>'}</select>
+ <div class="row"><select data-c="p">${PL.map(([q,v])=>`<option value="${q}" ${S.p==q?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
+ <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>
+ ${st?`<div class="tiles"><div><b>${n}</b>සටහන් කළ දින</div><div><b>${k}</b>නොපැමිණීම්</div><div><b>${pct(k,n)}</b>පැමිණීම</div></div>${stables().map(tbl).join("")}${SIG}`:'<div class="card">මෙම පන්තියට සිසුන් නැත.</div>'}`}
+
 function vRep(){return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" පැමිණීම් සාරාංශය",S.role=="admin"?(S.cls!="all"?"පන්තිය "+cname(S.cls):"සියලු පන්ති"):"පන්තිය "+cname(S.cid))}<div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
  ${S.role=="admin"?`<select data-c="cls" style="margin-top:8px"><option value="all">සියලු පන්ති</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.cls==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
  <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${stats()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${tables().map(tbl).join("")}${SIG}`}
@@ -267,7 +298,7 @@ const cord=(a,b)=>parseInt(a)-parseInt(b)||(a<b?-1:a>b?1:0);
 const ucl=()=>[...new Set(S.ur.map(x=>x.classId))].sort(cord);
 const uro=()=>S.ur.filter(x=>x.classId==S.ucls);
 const ucnt=()=>`සිසුන් ${uro().length} · නොපැමිණි <b>${S.uabs.size}</b> · පැමිණි <b>${uro().length-S.uabs.size}</b>`;
-const tabsFor=()=>S.role=="admin"?[["rep","සාරාංශ"],["ur","ඒකක සාරාංශ"],["usr","ගුරුවරු"+(S.reqs.some(r=>r.status!="rejected")?" 🔔"+S.reqs.filter(r=>r.status!="rejected").length:"")]]:[...(S.cid?[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"]]:[]),...(S.units.length?[["um","ඒකක"],["ul","ඒකක සිසුන්"],["ur","ඒකක සාරාංශ"]]:[])];
+const tabsFor=()=>S.role=="admin"?[["rep","සාරාංශ"],["sum","සිසු සාරාංශ"],["ur","ඒකක සාරාංශ"],["usr","ගුරුවරු"+(S.reqs.some(r=>r.status!="rejected")?" 🔔"+S.reqs.filter(r=>r.status!="rejected").length:"")]]:[...(S.cid?[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"],["sum","සිසු සාරාංශ"]]:[]),...(S.units.length?[["um","ඒකක"],["ul","ඒකක සිසුන්"],["ur","ඒකක සාරාංශ"]]:[])];
 const usel=()=>S.units.length>1?`<label>ඒකකය<select data-c="unit">${S.units.map(u=>`<option value="${u}" ${S.unit==u?"selected":""}>${uname(u)}</option>`).join("")}</select></label>`:`<h3 style="margin:0">${uname(S.unit)}</h3>`;
 const unitChk=(cls,sel,live)=>UNITS.map(([id,n])=>`<label class="chk"><input type="checkbox" class="${cls}" value="${id}" ${sel.includes(id)?"checked":""} ${live?'data-c="uu"':""}>${n}</label>`).join("");
 const SIG='<div class="sig"><div>සකස් කළේ</div><div>පන්ති/ඒකක භාර ගුරුවරයා</div><div>විදුහල්පති</div></div><div class="pf">Created By R.M.S.Chamalka</div>';
@@ -329,7 +360,7 @@ function render(){
  const adm=S.role=="admin",tabs=tabsFor();
  let body;
  if(!tabs.length)body='<div class="card">ඔබගේ ගිණුමට පන්තියක් හෝ ඒකකයක් ලබා දී නැත. කාර්යාලය අමතන්න.</div>';
- else body={mark:vMark,stu:vStu,rep:vRep,usr:vUsers,um:vUm,ul:vUl,ur:vUr}[S.tab]();
+ else body={mark:vMark,stu:vStu,rep:vRep,sum:vSum,usr:vUsers,um:vUm,ul:vUl,ur:vUr}[S.tab]();
  app.innerHTML=`<header><span title="${esc(S.u.email)}">${adm?"කාර්යාලය":[S.cid?"පන්තිය "+cname(S.cid):"",S.units.length?"ඒකක භාර":""].filter(Boolean).join(" · ")}</span><div class="row"><button class="lnk" data-a="qr">QR</button><button class="lnk" data-a="out">පිටවන්න</button></div></header>${BANNER}
  <nav>${tabs.map(([k,v])=>`<button class="${S.tab==k?"on":""}" data-a="tab" data-id="${k}">${v}</button>`).join("")}</nav><main>${body}</main>${FOOT(!adm&&(S.tab=="mark"||S.tab=="um")?90:16)}`}
 
@@ -355,6 +386,7 @@ async function toXls(){toast("Excel සකසමින්...");await lib(XL);con
 /* ---------- ක්‍රියා ---------- */
 async function go(t){S.tab=t;render();
  if(t=="rep")await loadRep();if(t=="usr")await loadUsers();
+ if(t=="sum")await loadSum();
  if(t=="mark"){await loadSt();await loadAtt();render()}
  if(t=="stu"){await loadSt();render()}
  if(t=="um"){await loadRoster();await loadUAtt();render()}
@@ -388,9 +420,11 @@ app.addEventListener("change",async e=>{const c=e.target.dataset.c;if(!c)return;
   else if(c=="unit"){S.unit=v;S.pl=[];await loadRoster();if(S.tab=="um")await loadUAtt();render()}
   else if(c=="pk"){S.pk=v;await loadPick();render()}
   else if(c=="uf"){S.uf=v;await loadUrep()}
+   else if(c=="sc"){S.sc=v;S.ss="";await loadSum()}
+   else if(c=="ss"){S.ss=v;render()}
   else if(c=="uc"){await setDoc(doc(db,"users",e.target.dataset.uid),{classId:v},{merge:true});toast("යාවත්කාලීන කළා")}
   else if(c=="uu"){const r=e.target.closest(".urow");await setDoc(doc(db,"users",r.dataset.uid),{units:[...r.querySelectorAll(".uu:checked")].map(x=>x.value)},{merge:true});toast("යාවත්කාලීන කළා")}
-  else{S[c]=v;S.tab=="ur"?await loadUrep():await loadRep()}
+  else{S[c]=v;S.tab=="ur"?await loadUrep():S.tab=="sum"?await loadSum():await loadRep()}
  }catch{toast("දෝෂයකි")}});
 
 app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(!el)return;const a=el.dataset.a,id=el.dataset.id;
