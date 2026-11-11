@@ -138,6 +138,26 @@ nav{overflow-x:auto}nav button{flex:1 0 auto;padding:12px 14px;white-space:nowra
 .lt button.on{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.14);color:#0b1f6b}
 .rrow{border-bottom:1px solid #e3e6f2;padding:10px 0}
 .rrow:last-child{border-bottom:0}
+
+/* ---------- පන්ති පැමිණීම් ලේඛනය ---------- */
+.reg{font-size:12px;border:1px solid #6b7490;width:auto;min-width:100%}
+.reg th,.reg td{padding:3px 5px;text-align:center;border:1px solid #b9c0d4;white-space:nowrap;vertical-align:middle}
+.reg td.nm{text-align:left;position:sticky;left:0;background:#fff;min-width:150px;z-index:1}
+.reg th{background:#e6eaf6;color:#0b1f6b}
+.reg .wt{background:#eef1fb;font-weight:700}
+.reg .z{color:var(--no);font-weight:700}
+.reg .off{background:#f1f2f5}
+.reg tr.ft td{background:#f7f8fc;font-weight:700}
+.regw .w{overflow-x:auto}
+@media print{
+ @page reg{size:A4 landscape;margin:9mm 8mm 12mm}
+ .regw{page:reg}
+ .reg{font-size:8.5px;min-width:0}
+ .reg th,.reg td{padding:2px 1px!important}
+ .reg td.nm{position:static;min-width:0;text-align:left;padding-left:3px!important}
+ .reg .off{background:#eee!important}
+ .regy{break-before:page}
+}
 </style>
 </head>
 <body>
@@ -164,7 +184,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const pad=n=>String(n).padStart(2,"0"),ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const pct=(a,t)=>t?(100-a/t*100).toFixed(1)+"%":"-";
 const PL=[["day","දිනපතා"],["week","සතිපතා"],["month","මාසික"],["year","වාර්ෂික"]];
-const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:"",reqs:[],req:null,lm:"in",sc:"1A",ss:"",sl:[],sdocs:[]};
+const S={u:null,role:null,cid:null,tab:"mark",date:ymd(new Date()),p:"day",rd:ymd(new Date()),cls:"all",st:[],abs:new Set(),sub:false,docs:[],rng:["",""],users:[],units:[],unit:"",ur:[],pd:"1",ucls:"",uabs:new Set(),usub:false,pk:"",pl:[],uh:[],uf:"",reqs:[],req:null,lm:"in",sc:"1A",ss:"",sl:[],sdocs:[],rm:ymd(new Date()).slice(0,7),radocs:[]};
 
 const FOOT=p=>`<footer style="padding-bottom:${p}px">Created By R.M.S.Chamalka</footer>`;
 function toast(m){const t=$("#t");t.textContent=m;t.style.display="block";clearTimeout(toast.k);toast.k=setTimeout(()=>t.style.display="none",2800)}
@@ -190,7 +210,7 @@ async function loadReqs(){const s=await getDocs(collection(db,"requests"));S.req
 async function loadUsers(){const s=await getDocs(collection(db,"users"));S.users=s.docs.map(d=>({id:d.id,...d.data()}));try{await loadReqs()}catch(x){console.error(x)}render()}
 
 /* ---------- සාරාංශ වගු ---------- */
-function tables(){if(S.tab=="sum")return stables();if(S.tab=="ur")return utables();
+function tables(){if(S.tab=="reg")return regTables();if(S.tab=="sum")return stables();if(S.tab=="ur")return utables();
  const cur=S.role=="admin"?S.cls:S.cid,T=[];
  if(cur=="all"){
   const by={};S.docs.forEach(x=>(by[x.classId]=by[x.classId]||[]).push(x));
@@ -290,6 +310,58 @@ function vRep(){return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" පැමිණී
  ${S.role=="admin"?`<select data-c="cls" style="margin-top:8px"><option value="all">සියලු පන්ති</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.cls==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
  <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${stats()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${tables().map(tbl).join("")}${SIG}`}
 
+
+/* ---------- පන්ති පැමිණීම් ලේඛනය (කඩදාසි ලේඛනයට සමාන ආකෘතිය) ---------- */
+const MN=["ජනවාරි","පෙබරවාරි","මාර්තු","අප්‍රේල්","මැයි","ජූනි","ජූලි","අගෝස්තු","සැප්තැම්බර්","ඔක්තෝබර්","නොවැම්බර්","දෙසැම්බර්"];
+const WK=i=>(i+1)+" වෙනි සතිය";
+async function loadReg(){const cls=S.role=="admin"?(S.sc||(S.sc="1A")):S.cid;
+ const [ss,as]=await Promise.all([getDocs(query(collection(db,"students"),where("classId","==",cls))),getDocs(query(collection(db,"attendance"),where("classId","==",cls)))]);
+ S.sl=ss.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>x.order-y.order);
+ S.radocs=as.docs.map(d=>d.data()).filter(x=>{const w=new Date(x.date+"T00:00").getDay();return w>0&&w<6}).sort((x,y)=>x.date<y.date?-1:1);
+ S.rng=range("month",S.rm+"-01");render()}
+function regModel(){
+ const [y,m]=S.rm.split("-").map(Number),first=new Date(y,m-1,1),last=new Date(y,m,0),by={};
+ S.radocs.forEach(x=>by[x.date]=x);
+ const W=[],d=new Date(first);d.setDate(1-(first.getDay()+6)%7);
+ for(;d<=last;d.setDate(d.getDate()+7)){
+  const days=[];for(let i=0;i<5;i++){const t=new Date(d);t.setDate(d.getDate()+i);const inm=t.getMonth()==m-1;days.push({n:t.getDate(),in:inm,doc:inm?(by[ymd(t)]||null):null})}
+  if(days.some(x=>x.in))W.push(days)}
+ const rows=S.sl.map((st,i)=>{let tot=0;
+  const wk=W.map(days=>{let t=0,any=false;
+   const c=days.map(x=>{if(!x.doc)return"";any=true;const p=!x.doc.absent.some(a=>a.id==st.id);if(p)t++;return p?1:0});
+   tot+=t;return{c,t:any?t:""}});
+  return{n:i+1,name:st.name,wk,tot}});
+ const foot=W.map(days=>{let at=0,pt=0,any=false;
+  const a=days.map(x=>x.doc?x.doc.absent.length:""),p=days.map(x=>x.doc?x.doc.total-x.doc.absent.length:"");
+  days.forEach(x=>{if(x.doc){any=true;at+=x.doc.absent.length;pt+=x.doc.total-x.doc.absent.length}});
+  return{a,p,at:any?at:"",pt:any?pt:""}});
+ const dd=W.flat().filter(x=>x.doc),att=dd.reduce((q,x)=>q+x.doc.total-x.doc.absent.length,0),abt=dd.reduce((q,x)=>q+x.doc.absent.length,0);
+ return{W,rows,foot,days:dd.length,att,abt,avg:dd.length?(att/dd.length).toFixed(1):"-"}}
+function regYear(){const y=S.rm.slice(0,4);let dn=0,at=0;
+ const rows=MN.map((nm,i)=>{const D=S.radocs.filter(x=>x.date.slice(0,7)==y+"-"+pad(i+1));if(!D.length)return[nm,"","","",""];
+  const a=D.reduce((q,x)=>q+x.total-x.absent.length,0);dn+=D.length;at+=a;
+  return[nm,D[D.length-1].total,a,D.length,(a/D.length).toFixed(1)]});
+ rows.push(["එකතුව","",at,dn,dn?(at/dn).toFixed(1):"-"]);
+ return{title:y+" වර්ෂය — පැමිණීම පිළිබඳ සාරාංශ වාර්තාව",head:["මාසය","සිසුන් ගණන","පැමිණීමේ මුළු වාර ගණන","පාසල් පැවති දින","සාමාන්‍ය පැමිණීම"],rows}}
+function vReg(){const adm=S.role=="admin",cls=adm?S.sc:S.cid,M=regModel(),mi=+S.rm.slice(5,7)-1,cell=v=>v===""?"":pad(v);
+ const h1=M.W.map((d,i)=>`<th colspan="6">${WK(i)}</th>`).join(""),
+ h2=M.W.map(d=>d.map(x=>`<th class="${x.in?"":"off"}">${x.in?pad(x.n):""}</th>`).join("")+'<th class="wt">එකතුව</th>').join(""),
+ body=M.rows.map(r=>`<tr><td>${r.n}</td><td class="nm">${esc(r.name)}</td>${r.wk.map((w,wi)=>w.c.map((v,di)=>`<td class="${v===0?"z":""}${M.W[wi][di].in?"":" off"}">${v}</td>`).join("")+`<td class="wt">${cell(w.t)}</td>`).join("")}<td class="wt">${M.days?pad(r.tot):""}</td></tr>`).join(""),
+ ft=(lab,k,kt,tot)=>`<tr class="ft"><td colspan="2" style="text-align:left">${lab}</td>${M.foot.map((f,wi)=>f[k].map((v,di)=>`<td class="${M.W[wi][di].in?"":"off"}">${cell(v)}</td>`).join("")+`<td class="wt">${cell(f[kt])}</td>`).join("")}<td class="wt">${M.days?pad(tot):""}</td></tr>`;
+ return `<div class="regw">${PH("පන්ති පැමිණීම් ලේඛනය","පන්තිය "+cname(cls)+" · "+MN[mi])}<div class="card noprint">
+ ${adm?`<select data-c="sc" style="margin-bottom:8px">${CLASSES.map(c=>`<option value="${c.id}" ${S.sc==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
+ <input type="month" value="${S.rm}" data-c="rm"><div class="row" style="flex-wrap:wrap;margin-top:8px"><button class="sec" data-a="pdf">PDF / මුද්‍රණය</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div>
+ <p style="margin:8px 0 0;font-size:13px">1 = පැමිණි, <span class="warn">0</span> = නොපැමිණි. යවා ඇති දින පමණක් පෙන්වයි (සඳුදා–සිකුරාදා).</p></div>
+ ${M.rows.length?`<div class="card"><h3>${MN[mi]} — ${S.rm.slice(0,4)}</h3><div class="w"><table class="reg"><tr><th rowspan="2">අංක</th><th rowspan="2" style="min-width:150px">සිසුන්ගේ නම</th>${h1}<th rowspan="2" class="wt">මාසික<br>එකතුව</th></tr><tr>${h2}</tr>${body}${ft("නොපැමිණි","a","at",M.abt)}${ft("පැමිණි","p","pt",M.att)}</table></div>
+ <p style="margin:10px 0 0"><b>පාසල් පැවති දින:</b> ${M.days} &nbsp;·&nbsp; <b>පැමිණීමේ මුළු වාර ගණන:</b> ${M.att} &nbsp;·&nbsp; <b>සාමාන්‍ය පැමිණීම:</b> ${M.avg}</p></div>
+ <div class="regy">${tbl(regYear())}</div>${SIG}`:'<div class="card">මෙම පන්තියට සිසුන් නැත.</div>'}</div>`}
+function regTables(){const M=regModel(),mi=+S.rm.slice(5,7)-1;
+ const head=["අංක","නම",...M.W.flatMap((d,i)=>[...d.map(x=>WK(i)+" "+(x.in?pad(x.n):"-")),WK(i)+" එකතුව"]),"මාසික එකතුව"];
+ const c=v=>v===""?"":pad(v),rows=M.rows.map(r=>[r.n,r.name,...r.wk.flatMap(w=>[...w.c,c(w.t)]),M.days?pad(r.tot):""]);
+ const f=(lab,k,kt,tot)=>[ "",lab,...M.foot.flatMap(x=>[...x[k].map(c),c(x[kt])]),M.days?pad(tot):""];
+ rows.push(f("නොපැමිණි","a","at",M.abt),f("පැමිණි","p","pt",M.att));
+ return[{title:"ලේඛනය "+MN[mi],head,rows},regYear()]}
+
 /* ---------- විෂය ඒකක ---------- */
 const UNITS=[["com","පරිගණක ඒකකය"],["mus","සංගීත කාමරය"],["sci","විද්‍යාගාරය"],["dan","නැටුම් කාමරය"],["art","චිත්‍ර කාමරය"],["smt","ස්මාර්ට් කාමරය"]];
 const PERIODS=8; // දිනකට කාලච්ඡේද ගණන
@@ -298,7 +370,7 @@ const cord=(a,b)=>parseInt(a)-parseInt(b)||(a<b?-1:a>b?1:0);
 const ucl=()=>[...new Set(S.ur.map(x=>x.classId))].sort(cord);
 const uro=()=>S.ur.filter(x=>x.classId==S.ucls);
 const ucnt=()=>`සිසුන් ${uro().length} · නොපැමිණි <b>${S.uabs.size}</b> · පැමිණි <b>${uro().length-S.uabs.size}</b>`;
-const tabsFor=()=>S.role=="admin"?[["rep","සාරාංශ"],["sum","සිසු සාරාංශ"],["ur","ඒකක සාරාංශ"],["usr","ගුරුවරු"+(S.reqs.some(r=>r.status!="rejected")?" 🔔"+S.reqs.filter(r=>r.status!="rejected").length:"")]]:[...(S.cid?[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"],["sum","සිසු සාරාංශ"]]:[]),...(S.units.length?[["um","ඒකක"],["ul","ඒකක සිසුන්"],["ur","ඒකක සාරාංශ"]]:[])];
+const tabsFor=()=>S.role=="admin"?[["rep","සාරාංශ"],["sum","සිසු සාරාංශ"],["reg","ලේඛනය"],["ur","ඒකක සාරාංශ"],["usr","ගුරුවරු"+(S.reqs.some(r=>r.status!="rejected")?" 🔔"+S.reqs.filter(r=>r.status!="rejected").length:"")]]:[...(S.cid?[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"],["sum","සිසු සාරාංශ"],["reg","ලේඛනය"]]:[]),...(S.units.length?[["um","ඒකක"],["ul","ඒකක සිසුන්"],["ur","ඒකක සාරාංශ"]]:[])];
 const usel=()=>S.units.length>1?`<label>ඒකකය<select data-c="unit">${S.units.map(u=>`<option value="${u}" ${S.unit==u?"selected":""}>${uname(u)}</option>`).join("")}</select></label>`:`<h3 style="margin:0">${uname(S.unit)}</h3>`;
 const unitChk=(cls,sel,live)=>UNITS.map(([id,n])=>`<label class="chk"><input type="checkbox" class="${cls}" value="${id}" ${sel.includes(id)?"checked":""} ${live?'data-c="uu"':""}>${n}</label>`).join("");
 const SIG='<div class="sig"><div>සකස් කළේ</div><div>පන්ති/ඒකක භාර ගුරුවරයා</div><div>විදුහල්පති</div></div><div class="pf">Created By R.M.S.Chamalka</div>';
@@ -363,7 +435,7 @@ function render(){
  const adm=S.role=="admin",tabs=tabsFor();
  let body;
  if(!tabs.length)body='<div class="card">ඔබගේ ගිණුමට පන්තියක් හෝ ඒකකයක් ලබා දී නැත. කාර්යාලය අමතන්න.</div>';
- else body={mark:vMark,stu:vStu,rep:vRep,sum:vSum,usr:vUsers,um:vUm,ul:vUl,ur:vUr}[S.tab]();
+ else body={mark:vMark,stu:vStu,rep:vRep,sum:vSum,reg:vReg,usr:vUsers,um:vUm,ul:vUl,ur:vUr}[S.tab]();
  app.innerHTML=`<header><span title="${esc(S.u.email)}">${adm?"කාර්යාලය":[S.cid?"පන්තිය "+cname(S.cid):"",S.units.length?"ඒකක භාර":""].filter(Boolean).join(" · ")}</span><div class="row"><button class="lnk" data-a="qr">QR</button><button class="lnk" data-a="out">පිටවන්න</button></div></header>${BANNER}
  <nav>${tabs.map(([k,v])=>`<button class="${S.tab==k?"on":""}" data-a="tab" data-id="${k}">${v}</button>`).join("")}</nav><main>${body}</main>${FOOT(!adm&&(S.tab=="mark"||S.tab=="um")?90:16)}`}
 
@@ -390,6 +462,7 @@ async function toXls(){toast("Excel සකසමින්...");await lib(XL);con
 async function go(t){S.tab=t;render();
  if(t=="rep")await loadRep();if(t=="usr")await loadUsers();
  if(t=="sum")await loadSum();
+ if(t=="reg")await loadReg();
  if(t=="mark"){await loadSt();await loadAtt();render()}
  if(t=="stu"){await loadSt();render()}
  if(t=="um"){await loadRoster();await loadUAtt();render()}
@@ -423,7 +496,8 @@ app.addEventListener("change",async e=>{const c=e.target.dataset.c;if(!c)return;
   else if(c=="unit"){S.unit=v;S.pl=[];await loadRoster();if(S.tab=="um")await loadUAtt();render()}
   else if(c=="pk"){S.pk=v;await loadPick();render()}
   else if(c=="uf"){S.uf=v;await loadUrep()}
-   else if(c=="sc"){S.sc=v;S.ss="";await loadSum()}
+   else if(c=="sc"){S.sc=v;S.ss="";S.tab=="reg"?await loadReg():await loadSum()}
+   else if(c=="rm"){if(!v)return;S.rm=v;await loadReg()}
    else if(c=="ss"){S.ss=v;render()}
   else if(c=="uc"){await setDoc(doc(db,"users",e.target.dataset.uid),{classId:v},{merge:true});toast("යාවත්කාලීන කළා")}
   else if(c=="uu"){const r=e.target.closest(".urow");await setDoc(doc(db,"users",r.dataset.uid),{units:[...r.querySelectorAll(".uu:checked")].map(x=>x.value)},{merge:true});toast("යාවත්කාලීන කළා")}
