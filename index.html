@@ -77,7 +77,9 @@ footer{text-align:center;color:#fff;font-size:13px;font-weight:600;padding:10px 
 .fc.k .fb{background:linear-gradient(135deg,#2b2d7e,#5a2a9c)}
 .cb{position:absolute;top:5px;right:8px;font-style:normal;font-size:10px;line-height:1.2;background:#fff;color:#c2257a;padding:1px 7px;border-radius:99px;font-weight:700;max-width:70%;text-align:center}
 .fc.cx .ff{background:linear-gradient(135deg,#ffb703,#ff6b35)}
-.fc.cx .ff b,.fc.cx .fb b{margin-top:10px}
+.fc.cx .ff b{margin-top:10px}
+.fc.cx .fb{background:linear-gradient(135deg,#5c5f7a,#23243d)}
+.fc.cx .fb span{background:#fff;color:#23243d;font-weight:700}
 .fb.nm{justify-content:flex-start;overflow:auto;font-size:12px;line-height:1.4}
 .fb.nm b{font-size:14px;margin-bottom:3px}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
@@ -413,7 +415,7 @@ function vUm(){const cl=ucl(),L=uro();
  return `<div class="card">${usel()}<div class="row" style="margin-top:8px"><input type="date" value="${S.date}" max="${ymd(new Date())}" data-c="ud"><select data-c="upd">${Array.from({length:PERIODS},(_,i)=>`<option value="${i+1}" ${S.pd==i+1?"selected":""}>${i+1} වන කාලච්ඡේදය</option>`).join("")}</select></div>
  ${cl.length?`<select data-c="ucls" style="margin-top:8px">${cl.map(c=>`<option value="${c}" ${S.ucls==c?"selected":""}>පන්තිය ${cname(c)} (සිසුන් ${S.ur.filter(x=>x.classId==c).length})</option>`).join("")}</select>`:""}
  <div style="margin-top:8px">${S.usub?'<span class="ok">✓ යවා ඇත (වෙනස් කර යළි යැවිය හැක)</span>':'<span>මෙම කාලච්ඡේදයට නොපැමිණි සිසුන්ගේ කාඩ්පත් පමණක් ස්පර්ශ කරන්න</span>'}${S.ucr?"":(S.uerr?`<div class="warn" style="margin-top:6px;font-size:13px">පන්ති පැමිණීම කියවිය නොහැකි විය (${esc(S.uerr)}).${S.uerr=="permission-denied"?" Firebase Console → Firestore → Rules හි නව firestore.rules Publish කර ඇත්දැයි බලන්න.":""}</div>`:'<div style="margin-top:6px;font-size:13px">මෙම දිනයට පන්ති පැමිණීම තවම යවා නැත</div>')}</div></div>
- ${L.length?`<div class="grid">${L.map((s,i)=>`<div class="fc${S.uabs.has(s.studentId)?" ab":""}${S.uca.has(s.studentId)?" cx":""}" tabindex="0" role="button" data-a="utog" data-id="${s.studentId}"><div class="fi"><div class="ff"><small>${i+1}</small>${S.uca.has(s.studentId)?'<em class="cb">අද පන්තියට නොපැමිණි</em>':""}<b>${esc(s.name)}</b><span>පැමිණි ✓</span></div><div class="fb"><small>${i+1}</small>${S.uca.has(s.studentId)?'<em class="cb">අද පන්තියට නොපැමිණි</em>':""}<b>${esc(s.name)}</b><span>නොපැමිණි ✕</span></div></div></div>`).join("")}</div>`:'<div class="card">මෙම ඒකකයට සිසුන් නැත. "ඒකක සිසුන්" ටැබයෙන් පන්ති ලැයිස්තුවෙන් සිසුන් තෝරන්න.</div>'}
+ ${L.length?`<div class="grid">${L.map((s,i)=>`<div class="fc${S.uabs.has(s.studentId)?" ab":""}${S.uca.has(s.studentId)?" cx":""}" tabindex="0" role="button" data-a="utog" data-id="${s.studentId}"><div class="fi"><div class="ff"><small>${i+1}</small>${S.uca.has(s.studentId)?'<em class="cb">අද පාසලට නොපැමිණි</em>':""}<b>${esc(s.name)}</b><span>${S.uca.has(s.studentId)?"ඒකකයට පැමිණි ✓":"පැමිණි ✓"}</span></div><div class="fb"><small>${i+1}</small><b>${esc(s.name)}</b><span>${S.uca.has(s.studentId)?"පාසලට නොපැමිණි ✕":"නොපැමිණි ✕"}</span></div></div></div>`).join("")}</div>`:'<div class="card">මෙම ඒකකයට සිසුන් නැත. "ඒකක සිසුන්" ටැබයෙන් පන්ති ලැයිස්තුවෙන් සිසුන් තෝරන්න.</div>'}
  <div class="bar"><span id="cnt">${ucnt()}</span><button class="pri" data-a="usend" ${L.length?"":"disabled"}>${S.usub?"යළි යවන්න":"යවන්න"}</button></div>`}
 
 function vUl(){const have=new Set(S.ur.map(x=>x.studentId));
