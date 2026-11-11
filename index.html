@@ -94,15 +94,35 @@ header b{font-size:15px;line-height:1.35;min-width:0}header small{font-size:11px
 @media(min-width:900px){main{max-width:980px}.grid{grid-template-columns:repeat(5,1fr)}.bar{padding-inline:calc((100% - 980px)/2 + 14px)}}
 @media(max-width:380px){.tiles b{font-size:20px}.fc{height:90px}}
 @media print{
- body{background:#fff!important;color:#000}
+ @page{size:A4;margin:14mm 12mm 16mm}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ body{background:#fff!important;color:#111;font-size:12px;line-height:1.45}
  #bg,header,.banner,nav,footer,.bar,.noprint,.grid,#t,.modal{display:none!important}
- main{max-width:none;padding:0}.ph{display:block;text-align:center;margin-bottom:10px}
- .ph img{width:70px;height:70px;border-radius:12px}.ph h2{margin:4px 0}
- .card{background:#fff;box-shadow:none;border:1px solid #bbb;break-inside:avoid}
- .tiles div{background:#fff!important;color:#000!important;border:1px solid #999;box-shadow:none}
- th{background:#eee!important}
+ main{max-width:none;padding:0}
+ .ph{display:block;margin-bottom:12px}
+ .ph .top{display:flex;align-items:center;gap:14px;padding-bottom:10px;border-bottom:3px solid #0b1f6b}
+ .ph img{width:68px;height:68px;border-radius:10px}
+ .ph h2{margin:0;font-size:19px;color:#0b1f6b;line-height:1.3}
+ .ph .sub{font-size:12px;color:#444}
+ .ph .ttl{margin-top:10px;padding:7px 12px;background:#0b1f6b;color:#fff;border-radius:6px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;gap:10px}
+ .ph .meta{margin-top:6px;font-size:11px;color:#555;display:flex;justify-content:space-between}
+ .card{background:#fff;box-shadow:none;border:0;border-radius:0;padding:0;margin:0 0 14px}
+ .card h3{font-size:13px;color:#0b1f6b;border-left:4px solid #f2b705;padding-left:8px;margin:10px 0 6px}
+ .w{overflow:visible;margin:0}
+ table{font-size:11.5px;border:1px solid #9aa3b8}
+ th{background:#dfe4f1!important;color:#0b1f6b;border:1px solid #9aa3b8;padding:5px 7px}
+ td{border:1px solid #c9cfdd;padding:4px 7px}
+ tr{break-inside:avoid}
+ tr:nth-child(even) td{background:#f5f7fb}
+ tr.tot td{background:#eef0f4!important;font-weight:700;border-top:2px solid #0b1f6b}
+ .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}
+ .tiles div{background:#fff!important;color:#0b1f6b!important;border:1.5px solid #0b1f6b;border-radius:8px;box-shadow:none;padding:6px;font-size:11px}
+ .tiles b{font-size:20px}
+ .sig{display:flex!important;justify-content:space-between;margin-top:34px;font-size:11px;break-inside:avoid}
+ .sig div{width:30%;text-align:center;border-top:1px solid #333;padding-top:4px}
+ .pf{display:block!important;margin-top:12px;text-align:center;font-size:10px;color:#777}
 }
-
+.sig,.pf{display:none}
 header{padding:6px 14px}header span{font-size:13px;opacity:.9}
 .banner{max-width:980px;margin:0 auto;padding:16px 16px 12px;text-align:center;color:#fff}
 .banner img{width:88px;height:88px;border-radius:22px;box-shadow:0 8px 28px rgba(0,0,0,.45)}
@@ -128,11 +148,11 @@ const SCHOOL="බ/ඩෙන්සිල් කොබ්බෑකඩුව මහ
 const ADDRESS="හාලිඇල"; // පූර්ණ ලිපිනය මෙහි ලියන්න (උදා: "හාලිඇල, බදුල්ල")
 const BANNER=`<div class="banner"><img src="logo.png" alt=""><h1>${SCHOOL}</h1><div class="addr">${ADDRESS}</div><h2>දෛනික සිසු පැමිණීම සටහන් කිරීමේ පද්ධතිය</h2></div>`;
 const ADMINS=["sudanchamalka@gmail.com"]; // කාර්යාලයේ ඊමේල් (firestore.rules හි ද එසේම දමන්න)
-const SECTIONS=["A","B"];             // සෑම ශ්‍රේණියකටම පන්ති 2ක්
+const ABC_UPTO=6;                     // 1 සිට මෙම ශ්‍රේණිය දක්වා A,B,C පන්ති 3ක් (ඉන් ඉහළ ශ්‍රේණි A,B පන්ති 2ක්)
 /* ======================================================== */
 
 const app0=initializeApp(CFG),auth=getAuth(app0),db=getFirestore(app0);
-const CLASSES=[];for(let g=1;g<=13;g++)SECTIONS.forEach(s=>CLASSES.push({id:g+s,name:g+" "+s}));
+const CLASSES=[];for(let g=1;g<=13;g++)(g<=ABC_UPTO?["A","B","C"]:["A","B"]).forEach(s=>CLASSES.push({id:g+s,name:g+" "+s}));
 const cname=id=>(CLASSES.find(c=>c.id==id)||{name:id}).name;
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -190,7 +210,7 @@ function tables(){if(S.tab=="ur")return utables();
  return T}
 
 /* ---------- දර්ශන ---------- */
-const tbl=t=>`<div class="card">${t.title?`<h3>${esc(t.title)}</h3>`:""}<div class="w"><table><tr>${t.head.map(h=>`<th>${h}</th>`).join("")}</tr>${t.rows.length?t.rows.map(r=>`<tr>${r.map(c=>`<td class="${c==="යවා නැත"?"warn":""}">${esc(c)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${t.head.length}">දත්ත නැත</td></tr>`}</table></div></div>`;
+const tbl=t=>`<div class="card">${t.title?`<h3>${esc(t.title)}</h3>`:""}<div class="w"><table><tr>${t.head.map(h=>`<th>${h}</th>`).join("")}</tr>${t.rows.length?t.rows.map(r=>`<tr class="${r[0]==="එකතුව"?"tot":""}">${r.map(c=>`<td class="${c==="යවා නැත"?"warn":""}">${esc(c)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${t.head.length}">දත්ත නැත</td></tr>`}</table></div></div>`;
 
 function vLogin(){return `<main style="padding-top:0">${BANNER}<form id="lg" class="card"><h3>ඇතුල් වන්න</h3>
 <label>ඊමේල්<input type="email" id="le" autocomplete="username" required></label>
@@ -212,9 +232,9 @@ function clsCards(){const by={};S.docs.forEach(x=>by[x.classId]=x);
 function vStu(){return `<div class="card"><label>නම් ඇතුළත් කරන්න (පේළියකට එක නමක්)<textarea id="nn" rows="5"></textarea></label><button class="pri" data-a="addst">එකතු කරන්න</button></div>
  <div class="card" style="padding:0">${S.st.length?S.st.map((s,i)=>`<div class="st" style="cursor:default"><span>${i+1}</span><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="edst" data-id="${s.id}" aria-label="වෙනස් කරන්න">✎</button><button class="x" data-a="delst" data-id="${s.id}" aria-label="මකන්න">✕</button></div>`).join(""):'<p style="padding:14px">තවම සිසුන් නැත.</p>'}</div>`}
 
-function vRep(){return `<div class="ph"><img src="logo.png" alt=""><h2>${SCHOOL}</h2><div>${SUB}</div><div>${(PL.find(x=>x[0]==S.p)||[])[1]} සාරාංශය · ${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}${S.role=="admin"&&S.cls!="all"?" · පන්තිය "+cname(S.cls):""}</div></div><div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
+function vRep(){return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" පැමිණීම් සාරාංශය",S.role=="admin"?(S.cls!="all"?"පන්තිය "+cname(S.cls):"සියලු පන්ති"):"පන්තිය "+cname(S.cid))}<div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
  ${S.role=="admin"?`<select data-c="cls" style="margin-top:8px"><option value="all">සියලු පන්ති</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.cls==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
- <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${stats()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${tables().map(tbl).join("")}`}
+ <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${stats()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${tables().map(tbl).join("")}${SIG}`}
 
 /* ---------- විෂය ඒකක ---------- */
 const UNITS=[["com","පරිගණක ඒකකය"],["mus","සංගීත කාමරය"],["sci","විද්‍යාගාරය"],["dan","නැටුම් කාමරය"],["art","චිත්‍ර කාමරය"],["smt","ස්මාර්ට් කාමරය"]];
@@ -227,7 +247,8 @@ const ucnt=()=>`සිසුන් ${uro().length} · නොපැමිණි <
 const tabsFor=()=>S.role=="admin"?[["rep","සාරාංශ"],["ur","ඒකක සාරාංශ"],["usr","ගුරුවරු"]]:[...(S.cid?[["mark","පැමිණීම"],["stu","සිසුන්"],["rep","සාරාංශ"]]:[]),...(S.units.length?[["um","ඒකක"],["ul","ඒකක සිසුන්"],["ur","ඒකක සාරාංශ"]]:[])];
 const usel=()=>S.units.length>1?`<label>ඒකකය<select data-c="unit">${S.units.map(u=>`<option value="${u}" ${S.unit==u?"selected":""}>${uname(u)}</option>`).join("")}</select></label>`:`<h3 style="margin:0">${uname(S.unit)}</h3>`;
 const unitChk=(cls,sel,live)=>UNITS.map(([id,n])=>`<label class="chk"><input type="checkbox" class="${cls}" value="${id}" ${sel.includes(id)?"checked":""} ${live?'data-c="uu"':""}>${n}</label>`).join("");
-const PH=t=>`<div class="ph"><img src="logo.png" alt=""><h2>${SCHOOL}</h2><div>${SUB}</div><div>${t} · ${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</div></div>`;
+const SIG='<div class="sig"><div>සකස් කළේ</div><div>පන්ති/ඒකක භාර ගුරුවරයා</div><div>විදුහල්පති</div></div><div class="pf">Created By R.M.S.Chamalka</div>';
+const PH=(t,x)=>`<div class="ph"><div class="top"><img src="logo.png" alt=""><div><h2>${SCHOOL}</h2><div class="sub">${SUB}</div></div></div><div class="ttl"><span>${t}</span><span>${x||""}</span></div><div class="meta"><span>කාලසීමාව: ${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</span><span>මුද්‍රණය: ${ymd(new Date())}</span></div></div>`;
 
 async function loadRoster(){if(!S.unit)return;const s=await getDocs(query(collection(db,"unitStudents"),where("unitId","==",S.unit)));
  S.ur=s.docs.map(d=>d.data()).sort((a,b)=>cord(a.classId,b.classId)||a.order-b.order);if(!ucl().includes(S.ucls))S.ucls=ucl()[0]||""}
@@ -240,15 +261,15 @@ async function loadUrep(){const [a,b]=range(S.p,S.rd);
 
 function vUm(){const cl=ucl(),L=uro();
  return `<div class="card">${usel()}<div class="row" style="margin-top:8px"><input type="date" value="${S.date}" max="${ymd(new Date())}" data-c="ud"><select data-c="upd">${Array.from({length:PERIODS},(_,i)=>`<option value="${i+1}" ${S.pd==i+1?"selected":""}>${i+1} වන කාලච්ඡේදය</option>`).join("")}</select></div>
- ${cl.length?`<select data-c="ucls" style="margin-top:8px">${cl.map(c=>`<option value="${c}" ${S.ucls==c?"selected":""}>පන්තිය ${cname(c)}</option>`).join("")}</select>`:""}
+ ${cl.length?`<select data-c="ucls" style="margin-top:8px">${cl.map(c=>`<option value="${c}" ${S.ucls==c?"selected":""}>පන්තිය ${cname(c)} (සිසුන් ${S.ur.filter(x=>x.classId==c).length})</option>`).join("")}</select>`:""}
  <div style="margin-top:8px">${S.usub?'<span class="ok">✓ යවා ඇත (වෙනස් කර යළි යැවිය හැක)</span>':'<span>මෙම කාලච්ඡේදයට නොපැමිණි සිසුන්ගේ කාඩ්පත් පමණක් ස්පර්ශ කරන්න</span>'}</div></div>
  ${L.length?`<div class="grid">${L.map((s,i)=>`<div class="fc${S.uabs.has(s.studentId)?" ab":""}" tabindex="0" role="button" data-a="utog" data-id="${s.studentId}"><div class="fi"><div class="ff"><small>${i+1}</small><b>${esc(s.name)}</b><span>පැමිණි ✓</span></div><div class="fb"><small>${i+1}</small><b>${esc(s.name)}</b><span>නොපැමිණි ✕</span></div></div></div>`).join("")}</div>`:'<div class="card">මෙම ඒකකයට සිසුන් නැත. "ඒකක සිසුන්" ටැබයෙන් පන්ති ලැයිස්තුවෙන් සිසුන් තෝරන්න.</div>'}
  <div class="bar"><span id="cnt">${ucnt()}</span><button class="pri" data-a="usend" ${L.length?"":"disabled"}>${S.usub?"යළි යවන්න":"යවන්න"}</button></div>`}
 
 function vUl(){const have=new Set(S.ur.map(x=>x.studentId));
  return `<div class="card">${usel()}</div>
- <div class="card"><h3>පන්ති ලැයිස්තුවෙන් සිසුන් තෝරන්න</h3><select data-c="pk"><option value="">පන්තියක් තෝරන්න</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.pk==c.id?"selected":""}>${c.name}</option>`).join("")}</select>
- ${S.pl.length?`<div style="margin-top:8px">${S.pl.map(s=>`<label class="st" style="cursor:pointer;font-weight:400;margin:0"><input type="checkbox" class="pk" value="${s.id}" ${have.has(s.id)?"checked disabled":""} style="width:22px;height:22px"><span style="flex:1">${esc(s.name)}</span>${have.has(s.id)?'<span class="ok">එක් කර ඇත</span>':""}</label>`).join("")}</div><div class="row" style="margin-top:10px"><button class="sec" data-a="uall">සියල්ල තෝරන්න</button><button class="pri" data-a="uadd">තෝරාගත් අය එක් කරන්න</button></div>`:(S.pk?"<p>මෙම පන්තියේ සිසුන් නැත.</p>":"")}</div>
+ <div class="card"><h3>පන්තිය තෝරා, මෙම විෂය කරන සිසුන් සලකුණු කරන්න</h3><select data-c="pk"><option value="">පන්තියක් තෝරන්න</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.pk==c.id?"selected":""}>${c.name} (මෙහි ${S.ur.filter(x=>x.classId==c.id).length})</option>`).join("")}</select>
+ ${S.pl.length?`<p style="margin:8px 0 0;font-size:14px">පන්තියේ සිසුන් ${S.pl.length} · සලකුණු කළ අය පමණක් මෙම ඒකකයට අයත් වේ</p><div style="margin-top:4px">${S.pl.map(s=>`<label class="st" style="cursor:pointer;font-weight:400;margin:0"><input type="checkbox" class="pk" value="${s.id}" ${have.has(s.id)?"checked":""} style="width:22px;height:22px"><span style="flex:1">${esc(s.name)}</span></label>`).join("")}</div><div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="sec" data-a="uall">සියල්ල</button><button class="sec" data-a="unone">කිසිවෙකු නැත</button><button class="pri" data-a="uadd">සුරකින්න</button></div>`:(S.pk?"<p>මෙම පන්තියේ සිසුන් නැත.</p>":"")}</div>
  <div class="card"><h3>${uname(S.unit)} — සිසුන් (${S.ur.length})</h3>${ucl().length?ucl().map(c=>{const L=S.ur.filter(x=>x.classId==c);return `<p style="margin:10px 0 0"><b>පන්තිය ${cname(c)}</b> (${L.length})</p>${L.map(s=>`<div class="st" style="cursor:default"><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="udel" data-id="${s.studentId}" aria-label="ඉවත් කරන්න">✕</button></div>`).join("")}`}).join(""):"තවම සිසුන් නැත."}</div>`}
 
 function utables(){const T=[];
@@ -262,15 +283,15 @@ function utables(){const T=[];
 function ustats(){const d=S.uh,t=d.reduce((s,x)=>s+x.total,0),a=d.reduce((s,x)=>s+x.absent.length,0);
  return `<div class="tiles"><div><b>${d.length}</b>කාලච්ඡේද සටහන්</div><div><b>${a}</b>නොපැමිණීම්</div><div><b>${pct(a,t)}</b>පැමිණීම</div></div>`}
 function vUr(){const adm=S.role=="admin";
- return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" ඒකක සාරාංශය"+(S.uf!="all"?" · "+uname(S.uf):""))}<div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
+ return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" ඒකක පැමිණීම් සාරාංශය",S.uf!="all"?uname(S.uf):"සියලු ඒකක")}<div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
  <select data-c="uf" style="margin-top:8px">${adm?'<option value="all">සියලු ඒකක</option>':""}${(adm?UNITS.map(u=>u[0]):S.units).map(u=>`<option value="${u}" ${S.uf==u?"selected":""}>${uname(u)}</option>`).join("")}</select>
- <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${ustats()}${utables().map(tbl).join("")}`}
+ <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${ustats()}${utables().map(tbl).join("")}${SIG}`}
 
 function vUsers(){return `<div class="card"><h3>නව ගිණුමක්</h3><label>නම<input id="un"></label><label>ඊමේල්<input type="email" id="ue"></label><label>තාවකාලික මුරපදය (අකුරු 6+)<input id="up"></label>
  <label>භූමිකාව<select id="urole"><option value="teacher">ගුරුවරයා</option><option value="admin">කාර්යාලය (පරිපාලක)</option></select></label>
  <label>පන්ති භාරය<select id="uk"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select></label>
  <div style="margin-bottom:10px"><b style="font-size:14px">ඒකක භාරය</b><br>${unitChk("nu",[])}</div><button class="pri" data-a="adduser">ගිණුම සාදන්න</button></div>
- <div class="card"><h3>ගිණුම්</h3>${S.users.map(u=>`<div class="urow" data-uid="${u.id}" style="border-bottom:1px solid var(--ln);padding:8px 0"><div class="row"><div style="flex:1">${esc(u.name||"")}${u.role=="admin"?' <span class="ok">(කාර්යාලය)</span>':""}<br><small>${esc(u.email)}</small></div><select data-c="uc" data-uid="${u.id}" style="width:auto"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}" ${u.classId==c.id?"selected":""}>${c.name}</option>`).join("")}</select><button class="x" data-a="deluser" data-id="${u.id}" aria-label="ඉවත් කරන්න">✕</button></div><div style="margin-top:4px">${unitChk("uu",u.units||[],1)}</div></div>`).join("")||"ගිණුම් නැත"}</div>`}
+ <div class="card"><h3>ගිණුම් (${S.users.length})</h3><p style="margin:0 0 8px;font-size:13px">එකම පන්තියට ගුරුවරුන් 2 දෙනෙකුට (හෝ වැඩි දෙනෙකුට) ඇතුළත් විය හැක — එකම පන්තිය දෙදෙනාටම තෝරන්න.</p>${S.users.map(u=>`<div class="urow" data-uid="${u.id}" style="border-bottom:1px solid var(--ln);padding:8px 0"><div class="row"><div style="flex:1">${esc(u.name||"")}${u.role=="admin"?' <span class="ok">(කාර්යාලය)</span>':""}<br><small>${esc(u.email)}</small></div><select data-c="uc" data-uid="${u.id}" style="width:auto"><option value="">පන්තියක් නැත</option>${CLASSES.map(c=>`<option value="${c.id}" ${u.classId==c.id?"selected":""}>${c.name}</option>`).join("")}</select>${u.id==S.u.uid?"":`<button class="sec" style="color:#c0392b;border-color:#c0392b;padding:6px 10px" data-a="deluser" data-id="${u.id}">මකන්න</button>`}</div><div style="margin-top:4px">${unitChk("uu",u.units||[],1)}</div></div>`).join("")||"ගිණුම් නැත"}</div>`}
 
 function render(){
  if(!S.u){app.innerHTML=vLogin();return}
@@ -347,12 +368,14 @@ app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(
   const p=setDoc(doc(db,"unitAtt",[S.unit,S.date,S.pd,S.ucls].join("_")),{unitId:S.unit,classId:S.ucls,date:S.date,period:+S.pd,total:L.length,absent:ab,by:S.u.email,at:Date.now()});
   try{await Promise.race([p,new Promise((_,j)=>setTimeout(j,6000,"t"))]);S.usub=true;toast("යවන ලදී ✓")}catch(x){toast(x=="t"?"ජාලය නැත. සම්බන්ධ වූ විට යැවේ":"යැවීම අසාර්ථකයි")}
   return render()}
- if(a=="uall"){document.querySelectorAll(".pk:not(:disabled)").forEach(x=>x.checked=true);return}
- if(a=="uadd"){const ids=[...document.querySelectorAll(".pk:checked:not(:disabled)")].map(x=>x.value);if(!ids.length)return toast("සිසුන් තෝරන්න");
-  const b=writeBatch(db);ids.forEach(i=>{const st=S.pl.find(x=>x.id==i);b.set(doc(db,"unitStudents",S.unit+"_"+i),{unitId:S.unit,studentId:i,name:st.name,classId:S.pk,order:st.order||0})});
-  await b.commit();await loadRoster();toast(ids.length+" දෙනෙකු එක් කළා");return render()}
+ if(a=="uall"||a=="unone"){document.querySelectorAll(".pk").forEach(x=>x.checked=a=="uall");return}
+ if(a=="uadd"){const on=new Set([...document.querySelectorAll(".pk:checked")].map(x=>x.value)),have=new Set(S.ur.map(x=>x.studentId)),b=writeBatch(db);let n1=0,n2=0;
+  S.pl.forEach(st=>{if(on.has(st.id)&&!have.has(st.id)){b.set(doc(db,"unitStudents",S.unit+"_"+st.id),{unitId:S.unit,studentId:st.id,name:st.name,classId:S.pk,order:st.order||0});n1++}
+   else if(!on.has(st.id)&&have.has(st.id)){b.delete(doc(db,"unitStudents",S.unit+"_"+st.id));n2++}});
+  if(!n1&&!n2)return toast("වෙනසක් නැත");
+  await b.commit();await loadRoster();toast("එක් කළා "+n1+" · ඉවත් කළා "+n2);return render()}
  if(a=="udel"){await deleteDoc(doc(db,"unitStudents",S.unit+"_"+id));await loadRoster();return render()}
- if(a=="pdf")return window.print();
+ if(a=="pdf"){const o=document.title;document.title="පැමිණීම_"+S.p+"_"+S.rng[0];window.print();document.title=o;return}
  if(a=="xls")return toXls();
  if(a=="qr")return showQR();
  if(a=="csv"){const out=tables().map(t=>[t.title||"",t.head,...t.rows].map(r=>[].concat(r).map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n")).join("\n\n");
@@ -363,7 +386,7 @@ app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(
   const c=await createUserWithEmailAndPassword(sa,m,p);
   await setDoc(doc(db,"users",c.user.uid),{email:m,name:n,role:ro,classId:ro=="teacher"?k:"",units:ro=="teacher"?us:[]});
   await signOut(sa);toast("ගිණුම සාදන ලදී");return loadUsers()}
- if(a=="deluser"){if(confirm("මෙම ගිණුමට ප්‍රවේශය ඉවත් කරන්නද?")){await deleteDoc(doc(db,"users",id));loadUsers()}return}
+ if(a=="deluser"){if(S.role!="admin")return toast("ගිණුම් මැකිය හැක්කේ පරිපාලකයාට පමණි");if(id==S.u.uid)return toast("ඔබේ ම ගිණුම මැකිය නොහැක");const u=S.users.find(x=>x.id==id);if(confirm((u?u.name+" ("+u.email+")":"මෙම")+" ගිණුම මකන්නද? මෙයින් පසු ඇතුල් විය නොහැක.")){await deleteDoc(doc(db,"users",id));toast("ගිණුම මකා දමන ලදී");loadUsers()}return}
  }catch(x){console.error(x);toast(x.code=="auth/email-already-in-use"?"මෙම ඊමේල් දැනටමත් ඇත":"දෝෂයකි — යළි උත්සාහ කරන්න")}});
 
 app.addEventListener("keydown",e=>{if((e.key=="Enter"||e.key==" ")&&e.target.classList.contains("fc")){e.preventDefault();e.target.click()}});
