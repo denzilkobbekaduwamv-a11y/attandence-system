@@ -99,6 +99,9 @@ header b{font-size:15px;line-height:1.35;min-width:0}header small{font-size:11px
 .modal .card{margin:0}
 @media(min-width:900px){main{max-width:980px}.grid{grid-template-columns:repeat(5,1fr)}.bar{padding-inline:calc((100% - 980px)/2 + 14px)}}
 @media(max-width:380px){.tiles b{font-size:20px}.fc{height:90px}}
+.cgrid{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}.cgrid .card{margin:0}
+@media(min-width:700px){.cgrid{grid-template-columns:1fr 1fr}}
+@media print{.cgrid{grid-template-columns:1fr 1fr}.cgrid .card{break-inside:avoid}}
 @media print{
  @page{size:A4;margin:14mm 12mm 16mm}
  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -284,6 +287,18 @@ function gTable(D){const r=gsplit(D),T=r.tb+r.tg+r.tu,A=r.ab+r.ag+r.au,
  if(r.tu||r.au)rows.push(["ලිංගභේදය නොදන්නා",r.tu,r.au,r.tu-r.au,pct(r.au,r.tu)]);
  rows.push(["එකතුව",T,A,T-A,pct(A,T)]);
  return{title:"පිරිමි / ගැහැණු අනුව පැමිණීම",head:["ලිංගභේදය",S.p=="day"?"සිසුන්":"සිසු-දින","නොපැමිණි","පැමිණි","%"],rows}}
+const GC={M:"#2f6fed",F:"#d6336c",A:"#c9ced8"};
+function gDon(lbl,t,a,col){if(!t)return `<div style="margin:6px 0"><b style="font-size:13px">${lbl}</b> — දත්ත නැත</div>`;const p=t-a;
+ return `<div style="margin:8px 0"><b style="font-size:13px">${lbl}</b>${donutBox([{v:p,c:col},{v:a,c:GC.A}],f1(p/t*100)+"%","පැමිණීම",[[col,"පැමිණි "+p],[GC.A,"නොපැමිණි "+a],["transparent","මුළු "+t]])}</div>`}
+function classGender(){const by={};S.docs.forEach(x=>(by[x.classId]=by[x.classId]||[]).push(x));
+ return `<div class="card"><h3>පන්ති අනුව — පිරිමි / ගැහැණු</h3><p style="margin:0;font-size:13px">පන්තියක "වාර්තාව" බොත්තම ඔබා, එම පන්තියේ PDF / Excel / CSV වාර්තාව ගන්න.</p></div><div class="cgrid">`+
+ CLASSES.map(c=>{const l=by[c.id];if(!l)return `<div class="card"><h3>පන්තිය ${c.name}</h3><span class="warn">${S.p=="day"?"යවා නැත":"දත්ත නැත"}</span></div>`;
+  const g=gsplit(l);return `<div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">පන්තිය ${c.name}</h3><button class="sec noprint" data-a="clsrep" data-id="${c.id}" style="padding:4px 10px">වාර්තාව</button></div>${gDon("පිරිමි",g.tb,g.ab,GC.M)}${gDon("ගැහැණු",g.tg,g.ag,GC.F)}${g.tu?`<p class="warn">ලිංගභේදය නොදන්නා සිසුන්: ${g.tu}</p>`:""}</div>`}).join("")+`</div>`}
+function cgTable(){const by={};S.docs.forEach(x=>(by[x.classId]=by[x.classId]||[]).push(x));const G=gsplit(S.docs),u=G.tu||G.au;
+ const f=(n,g)=>[n,g.tb,g.tb-g.ab,g.ab,pct(g.ab,g.tb),g.tg,g.tg-g.ag,g.ag,pct(g.ag,g.tg)].concat(u?[g.tu,g.au]:[]);
+ const rows=CLASSES.map(c=>by[c.id]?f(c.name,gsplit(by[c.id])):[c.name,"","","","","","","",""].concat(u?["",""]:[]));
+ rows.push(f("එකතුව",G));
+ return{title:"පන්ති අනුව — පිරිමි / ගැහැණු",head:["පන්තිය","පිරිමි සිසුන්","පිරිමි පැමිණි","පිරිමි නොපැමිණි","පිරිමි %","ගැහැණු සිසුන්","ගැහැණු පැමිණි","ගැහැණු නොපැමිණි","ගැහැණු %"].concat(u?["නොදන්නා සිසුන්","නොදන්නා නොපැමිණි"]:[]),rows}}
 async function loadSum(){const [a,b]=range(S.p,S.rd),cls=S.role=="admin"?(S.sc||(S.sc="1A")):S.cid;
  const [ss,as]=await Promise.all([getDocs(query(collection(db,"students"),where("classId","==",cls))),getDocs(query(collection(db,"attendance"),where("classId","==",cls)))]);
  await loadHd();S.sl=ss.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>x.order-y.order);
@@ -307,7 +322,7 @@ function tables(){if(S.tab=="reg")return regTables();if(S.tab=="sum")return stab
    const G=gsplit(S.docs);rows.push(["එකතුව","",ta,pct(ta,tt),pct(G.ab,G.tb),pct(G.ag,G.tg)]);
    T.push({head:["පන්තිය","යවා ඇති දින","මුළු නොපැමිණීම්","සාමාන්‍ය පැමිණීම","පිරිමි පැමිණීම","ගැහැණු පැමිණීම"],rows});
   }
-  T.unshift(gTable(S.docs));
+  T.unshift(cgTable());T.unshift(gTable(S.docs));
   return T}
  const docs=S.docs.filter(x=>x.classId==cur);
  if(S.p=="year"){
@@ -395,7 +410,7 @@ function vSum(){const adm=S.role=="admin",cls=adm?S.sc:S.cid,st=S.sl.find(x=>x.i
 
 function vRep(){return `${PH((PL.find(x=>x[0]==S.p)||[])[1]+" පැමිණීම් සාරාංශය",S.role=="admin"?(S.cls!="all"?"පන්තිය "+cname(S.cls):"සියලු පන්ති"):"පන්තිය "+cname(S.cid))}<div class="card noprint"><div class="row"><select data-c="p">${PL.map(([k,v])=>`<option value="${k}" ${S.p==k?"selected":""}>${v}</option>`).join("")}</select><input type="date" value="${S.rd}" data-c="rd"></div>
  ${S.role=="admin"?`<select data-c="cls" style="margin-top:8px"><option value="all">සියලු පන්ති</option>${CLASSES.map(c=>`<option value="${c.id}" ${S.cls==c.id?"selected":""}>${c.name}</option>`).join("")}</select>`:""}
- <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${stats()}${repCharts()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${tables().map(tbl).join("")}${SIG}`}
+ <p style="margin:8px 0">${S.rng[0]}${S.rng[0]!=S.rng[1]?" — "+S.rng[1]:""}</p><div class="row" style="flex-wrap:wrap"><button class="sec" data-a="pdf">PDF</button><button class="sec" data-a="xls">Excel</button><button class="sec" data-a="csv">CSV</button></div></div>${stats()}${repCharts()}${S.role=="admin"&&S.cls=="all"&&S.p=="day"?clsCards():""}${S.role=="admin"&&S.cls=="all"?classGender():""}${tables().map(tbl).join("")}${SIG}`}
 
 
 /* ---------- පන්ති පැමිණීම් ලේඛනය (කඩදාසි ලේඛනයට සමාන ආකෘතිය) ---------- */
@@ -580,8 +595,7 @@ function repCharts(){const cur=S.role=="admin"?S.cls:S.cid,D=cur=="all"?S.docs:S
   if(RG.length)h+=`<div class="card"><h3>පන්ති අනුව පැමිණීම % — ගැහැණු</h3>${chHBar(RG)}</div>`}
  else if(S.p=="day"){const x=D[0],a=x.absent.length,p=x.total-a;
   h+=`<div class="card"><h3>පැමිණීම</h3>${donutBox([{v:p,c:"#2e9e6b"},{v:a,c:"#d9534f"}],f1(pc(a,x.total))+"%","පැමිණීම",[["#2e9e6b","පැමිණි "+p],["#d9534f","නොපැමිණි "+a]])}</div>`}
- {const r=gsplit(D),R=[];if(r.tb)R.push({n:"පිරිමි",v:100-r.ab/r.tb*100,c:"#0b1f6b"});if(r.tg)R.push({n:"ගැහැණු",v:100-r.ag/r.tg*100,c:"#d6336c"});
-  if(R.length)h+=`<div class="card"><h3>පිරිමි / ගැහැණු අනුව පැමිණීම %</h3>${chHBar(R)}</div>`}
+ {const r=gsplit(D);if(r.tb||r.tg)h+=`<div class="card"><h3>පිරිමි / ගැහැණු අනුව පැමිණීම</h3>${gDon("පිරිමි",r.tb,r.ab,GC.M)}${gDon("ගැහැණු",r.tg,r.ag,GC.F)}</div>`}
  if(S.p!="day"){const g={};D.forEach(x=>{const k=S.p=="year"?x.date.slice(0,7):x.date;(g[k]=g[k]||[]).push(x)});
   const ks=Object.keys(g).sort(),vals=ks.map(k=>{const [t,a]=sm(g[k]);return pc(a,t)}),lab=ks.map(k=>S.p=="year"?MS[+k.slice(5,7)-1]:k.slice(8));
   h+=`<div class="card"><h3>${S.p=="year"?"මාසිකව":"දිනපතා"} පැමිණීම %</h3>${chBar({labels:lab,vals,cols:vals.map(TC),nv:ks.length>12})}</div>`}
@@ -769,6 +783,7 @@ app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(
  if(a=="reset"){const m=$("#le").value.trim();if(!m)return toast("ඊමේල් ඇතුළත් කරන්න");await sendPasswordResetEmail(auth,m);return toast("මුරපද වෙනස් කිරීමේ ඊමේලය යැවිණි")}
  if(a=="tog"){S.abs.has(id)?S.abs.delete(id):S.abs.add(id);el.classList.toggle("ab");$("#cnt").innerHTML=cnt();return}
  if(a=="fl")return el.classList.toggle("ab");
+ if(a=="clsrep"){S.cls=id;render();window.scrollTo(0,0);toast("PDF / Excel / CSV වාර්තාව ගත හැක");return}
  if(a=="send"){
   const ab=S.st.filter(s=>S.abs.has(s.id)).map(s=>({id:s.id,name:s.name}));
   const p=setDoc(doc(db,"attendance",S.cid+"_"+S.date),{classId:S.cid,grade:parseInt(S.cid),date:S.date,total:S.st.length,absent:ab,by:S.u.email,at:Date.now()});
