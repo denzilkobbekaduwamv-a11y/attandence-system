@@ -267,7 +267,23 @@ async function loadSt(){const s=await getDocs(query(collection(db,"students"),wh
 async function loadAtt(){const d=await getDoc(doc(db,"attendance",S.cid+"_"+S.date));S.sub=d.exists();S.abs=new Set(d.exists()?d.data().absent.map(a=>a.id):[])}
 async function loadRep(){const [a,b]=range(S.p,S.rd);
  const q=S.role=="admin"?query(collection(db,"attendance"),where("date",">=",a),where("date","<=",b)):query(collection(db,"attendance"),where("classId","==",S.cid));
- const s=await getDocs(q);S.docs=s.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b).sort((x,y)=>x.date<y.date?-1:1);S.rng=[a,b];render()}
+ const s=await getDocs(q);S.docs=s.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b).sort((x,y)=>x.date<y.date?-1:1);S.rng=[a,b];await loadGen();render()}
+async function loadGen(){const L=(S.role=="admin"?CLASSES.map(c=>c.id):[S.cid]).filter(Boolean);S.gm={};S.gc={};
+ try{const r=await Promise.all(L.map(id=>getDocs(query(collection(db,"students"),where("classId","==",id)))));
+  r.forEach((q,i)=>{const c={M:0,F:0,U:0};q.docs.forEach(d=>{const g=d.data().gender,k=g=="M"||g=="F"?g:"U";c[k]++;S.gm[d.id]=k});S.gc[L[i]]=c})}catch(e){console.error(e)}}
+/* පිරිමි / ගැහැණු බෙදීම */
+function gsplit(D){const r={tb:0,tg:0,tu:0,ab:0,ag:0,au:0};
+ D.forEach(x=>{const c=(S.gc||{})[x.classId]||{M:0,F:0,U:0},n=c.M+c.F+c.U;let b=c.M,g=c.F,u=c.U;
+  if(!n){b=0;g=0;u=x.total}else if(n!=x.total){const k=x.total/n;b=Math.round(b*k);g=Math.round(g*k);u=x.total-b-g}
+  r.tb+=b;r.tg+=g;r.tu+=u;
+  x.absent.forEach(a=>{const k=(S.gm||{})[a.id];if(k=="M")r.ab++;else if(k=="F")r.ag++;else r.au++})});
+ return r}
+const gP=(p,t)=>t?p+" / "+t:"";
+function gTable(D){const r=gsplit(D),T=r.tb+r.tg+r.tu,A=r.ab+r.ag+r.au,
+  rows=[["පිරිමි",r.tb,r.ab,r.tb-r.ab,pct(r.ab,r.tb)],["ගැහැණු",r.tg,r.ag,r.tg-r.ag,pct(r.ag,r.tg)]];
+ if(r.tu||r.au)rows.push(["ලිංගභේදය නොදන්නා",r.tu,r.au,r.tu-r.au,pct(r.au,r.tu)]);
+ rows.push(["එකතුව",T,A,T-A,pct(A,T)]);
+ return{title:"පිරිමි / ගැහැණු අනුව පැමිණීම",head:["ලිංගභේදය",S.p=="day"?"සිසුන්":"සිසු-දින","නොපැමිණි","පැමිණි","%"],rows}}
 async function loadSum(){const [a,b]=range(S.p,S.rd),cls=S.role=="admin"?(S.sc||(S.sc="1A")):S.cid;
  const [ss,as]=await Promise.all([getDocs(query(collection(db,"students"),where("classId","==",cls))),getDocs(query(collection(db,"attendance"),where("classId","==",cls)))]);
  await loadHd();S.sl=ss.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>x.order-y.order);
@@ -283,21 +299,22 @@ function tables(){if(S.tab=="reg")return regTables();if(S.tab=="sum")return stab
   const by={};S.docs.forEach(x=>(by[x.classId]=by[x.classId]||[]).push(x));
   let tt=0,ta=0;
   if(S.p=="day"){
-   const rows=CLASSES.map(c=>{const x=(by[c.id]||[])[0];if(!x)return[c.name,"","","","","යවා නැත"];tt+=x.total;ta+=x.absent.length;return[c.name,x.total,x.absent.length,x.total-x.absent.length,pct(x.absent.length,x.total),x.absent.map(a=>a.name).join(", ")]});
-   rows.push(["එකතුව",tt,ta,tt-ta,pct(ta,tt),""]);
-   T.push({head:["පන්තිය","සිසුන්","නොපැමිණි","පැමිණි","%","නොපැමිණි සිසුන්"],rows});
+   const rows=CLASSES.map(c=>{const x=(by[c.id]||[])[0];if(!x)return[c.name,"","","","","","","යවා නැත"];tt+=x.total;ta+=x.absent.length;const g=gsplit([x]);return[c.name,x.total,x.absent.length,x.total-x.absent.length,pct(x.absent.length,x.total),gP(g.tb-g.ab,g.tb),gP(g.tg-g.ag,g.tg),x.absent.map(a=>a.name).join(", ")]});
+   const G=gsplit(S.docs);rows.push(["එකතුව",tt,ta,tt-ta,pct(ta,tt),gP(G.tb-G.ab,G.tb),gP(G.tg-G.ag,G.tg),""]);
+   T.push({head:["පන්තිය","සිසුන්","නොපැමිණි","පැමිණි","%","පිරිමි පැමිණි","ගැහැණු පැමිණි","නොපැමිණි සිසුන්"],rows});
   }else{
-   const rows=CLASSES.map(c=>{const l=by[c.id]||[],t=l.reduce((s,x)=>s+x.total,0),a=l.reduce((s,x)=>s+x.absent.length,0);tt+=t;ta+=a;return[c.name,l.length,a,pct(a,t)]});
-   rows.push(["එකතුව","",ta,pct(ta,tt)]);
-   T.push({head:["පන්තිය","යවා ඇති දින","මුළු නොපැමිණීම්","සාමාන්‍ය පැමිණීම"],rows});
+   const rows=CLASSES.map(c=>{const l=by[c.id]||[],t=l.reduce((s,x)=>s+x.total,0),a=l.reduce((s,x)=>s+x.absent.length,0);tt+=t;ta+=a;const g=gsplit(l);return[c.name,l.length,a,pct(a,t),pct(g.ab,g.tb),pct(g.ag,g.tg)]});
+   const G=gsplit(S.docs);rows.push(["එකතුව","",ta,pct(ta,tt),pct(G.ab,G.tb),pct(G.ag,G.tg)]);
+   T.push({head:["පන්තිය","යවා ඇති දින","මුළු නොපැමිණීම්","සාමාන්‍ය පැමිණීම","පිරිමි පැමිණීම","ගැහැණු පැමිණීම"],rows});
   }
+  T.unshift(gTable(S.docs));
   return T}
  const docs=S.docs.filter(x=>x.classId==cur);
  if(S.p=="year"){
-  const m={};docs.forEach(x=>{const k=x.date.slice(0,7);m[k]=m[k]||{n:0,t:0,a:0};m[k].n++;m[k].t+=x.total;m[k].a+=x.absent.length});
-  T.push({title:cname(cur)+" — මාසික",head:["මාසය","දින","නොපැමිණීම්","සාමාන්‍ය පැමිණීම"],rows:Object.keys(m).sort().map(k=>[k,m[k].n,m[k].a,pct(m[k].a,m[k].t)])});
+  const m={};docs.forEach(x=>{const k=x.date.slice(0,7);m[k]=m[k]||{n:0,t:0,a:0,d:[]};m[k].d.push(x);m[k].n++;m[k].t+=x.total;m[k].a+=x.absent.length});
+  T.push({title:cname(cur)+" — මාසික",head:["මාසය","දින","නොපැමිණීම්","සාමාන්‍ය පැමිණීම","පිරිමි පැමිණීම","ගැහැණු පැමිණීම"],rows:Object.keys(m).sort().map(k=>{const g=gsplit(m[k].d);return[k,m[k].n,m[k].a,pct(m[k].a,m[k].t),pct(g.ab,g.tb),pct(g.ag,g.tg)]})});
  }else{
-  T.push({title:cname(cur),head:["දිනය","සිසුන්","නොපැමිණි","පැමිණි","%","නොපැමිණි සිසුන්"],rows:docs.map(x=>[x.date,x.total,x.absent.length,x.total-x.absent.length,pct(x.absent.length,x.total),x.absent.map(a=>a.name).join(", ")])});
+  T.push({title:cname(cur),head:["දිනය","සිසුන්","නොපැමිණි","පැමිණි","%","පිරිමි පැමිණි","ගැහැණු පැමිණි","නොපැමිණි සිසුන්"],rows:docs.map(x=>{const g=gsplit([x]);return[x.date,x.total,x.absent.length,x.total-x.absent.length,pct(x.absent.length,x.total),gP(g.tb-g.ab,g.tb),gP(g.tg-g.ag,g.tg),x.absent.map(a=>a.name).join(", ")]})});
  }
  if(S.p!="day"){
   const c={};docs.forEach(x=>x.absent.forEach(a=>{c[a.id]=c[a.id]||{n:a.name,k:0};c[a.id].k++}));
@@ -305,6 +322,7 @@ function tables(){if(S.tab=="reg")return regTables();if(S.tab=="sum")return stab
   T.push({title:"සිසුන් අනුව නොපැමිණි දින",head:["නම","දින ගණන"],rows:Object.values(c).sort((x,y)=>y.k-x.k).map(v=>[v.n,v.k])});
   T.unshift({title:"සාරාංශය",head:["යවා ඇති දින","මුළු නොපැමිණීම්","සාමාන්‍ය පැමිණීම"],rows:[[docs.length,a,pct(a,t)]]});
  }
+ T.splice(S.p!="day"?1:0,0,gTable(docs));
  return T}
 
 /* ---------- දර්ශන ---------- */
@@ -340,7 +358,7 @@ function vMark(){const n=S.st.length;
  <div class="bar"><span id="cnt">${cnt()}</span><button class="pri" data-a="send" ${n?"":"disabled"}>${S.sub?"යළි යවන්න":"යවන්න"}</button></div>`}
 
 function stats(){const cur=S.role=="admin"?S.cls:S.cid,d=cur=="all"?S.docs:S.docs.filter(x=>x.classId==cur),t=d.reduce((s,x)=>s+x.total,0),a=d.reduce((s,x)=>s+x.absent.length,0);
- return `<div class="tiles"><div><b>${d.length}</b>${cur=="all"?"යැවූ වාර්තා":"යැවූ දින"}</div><div><b>${a}</b>නොපැමිණීම්</div><div><b>${pct(a,t)}</b>පැමිණීම</div></div>`}
+ return `<div class="tiles"><div><b>${d.length}</b>${cur=="all"?"යැවූ වාර්තා":"යැවූ දින"}</div><div><b>${a}</b>නොපැමිණීම්</div><div><b>${pct(a,t)}</b>පැමිණීම</div></div>`+(()=>{const r=gsplit(d);return `<div class="tiles" style="grid-template-columns:repeat(2,1fr)"><div style="background:linear-gradient(135deg,#0b1f6b,#3a86ff)"><b>${pct(r.ab,r.tb)}</b>පිරිමි පැමිණීම<br><small>නොපැමිණි ${r.ab} / ${r.tb}</small></div><div style="background:linear-gradient(135deg,#b0186b,#ff6fa5)"><b>${pct(r.ag,r.tg)}</b>ගැහැණු පැමිණීම<br><small>නොපැමිණි ${r.ag} / ${r.tg}</small></div></div>`})()}
 function clsCards(){const by={};S.docs.forEach(x=>by[x.classId]=x);
  return `<div class="grid">${CLASSES.map(c=>{const x=by[c.id],a=x?x.absent.length:0;
   return `<div class="fc k${x?"":" p"}" style="height:118px" tabindex="0" role="button" data-a="fl"><div class="fi"><div class="ff"><b>${c.name}</b><span>${x?pct(a,x.total)+" · "+a+" නොපැමිණි":"යවා නැත"}</span></div><div class="fb nm"><b>${c.name}</b>${x?(a?x.absent.map(s=>esc(s.name)).join("<br>"):"සියලු දෙනා පැමිණ ඇත"):"තවම යවා නැත"}</div></div></div>`}).join("")}</div>`}
@@ -557,6 +575,8 @@ function repCharts(){const cur=S.role=="admin"?S.cls:S.cid,D=cur=="all"?S.docs:S
   h+=`<div class="card"><h3>පන්ති අනුව පැමිණීම %</h3>${chHBar(R)}</div>`}
  else if(S.p=="day"){const x=D[0],a=x.absent.length,p=x.total-a;
   h+=`<div class="card"><h3>පැමිණීම</h3>${donutBox([{v:p,c:"#2e9e6b"},{v:a,c:"#d9534f"}],f1(pc(a,x.total))+"%","පැමිණීම",[["#2e9e6b","පැමිණි "+p],["#d9534f","නොපැමිණි "+a]])}</div>`}
+ {const r=gsplit(D),R=[];if(r.tb)R.push({n:"පිරිමි",v:100-r.ab/r.tb*100,c:"#0b1f6b"});if(r.tg)R.push({n:"ගැහැණු",v:100-r.ag/r.tg*100,c:"#d6336c"});
+  if(R.length)h+=`<div class="card"><h3>පිරිමි / ගැහැණු අනුව පැමිණීම %</h3>${chHBar(R)}</div>`}
  if(S.p!="day"){const g={};D.forEach(x=>{const k=S.p=="year"?x.date.slice(0,7):x.date;(g[k]=g[k]||[]).push(x)});
   const ks=Object.keys(g).sort(),vals=ks.map(k=>{const [t,a]=sm(g[k]);return pc(a,t)}),lab=ks.map(k=>S.p=="year"?MS[+k.slice(5,7)-1]:k.slice(8));
   h+=`<div class="card"><h3>${S.p=="year"?"මාසිකව":"දිනපතා"} පැමිණීම %</h3>${chBar({labels:lab,vals,cols:vals.map(TC),nv:ks.length>12})}</div>`}
