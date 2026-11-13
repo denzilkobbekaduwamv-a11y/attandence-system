@@ -360,8 +360,8 @@ function vMark(){const n=S.st.length;
 function stats(){const cur=S.role=="admin"?S.cls:S.cid,d=cur=="all"?S.docs:S.docs.filter(x=>x.classId==cur),t=d.reduce((s,x)=>s+x.total,0),a=d.reduce((s,x)=>s+x.absent.length,0);
  return `<div class="tiles"><div><b>${d.length}</b>${cur=="all"?"යැවූ වාර්තා":"යැවූ දින"}</div><div><b>${a}</b>නොපැමිණීම්</div><div><b>${pct(a,t)}</b>පැමිණීම</div></div>`+(()=>{const r=gsplit(d);return `<div class="tiles" style="grid-template-columns:repeat(2,1fr)"><div style="background:linear-gradient(135deg,#0b1f6b,#3a86ff)"><b>${pct(r.ab,r.tb)}</b>පිරිමි පැමිණීම<br><small>නොපැමිණි ${r.ab} / ${r.tb}</small></div><div style="background:linear-gradient(135deg,#b0186b,#ff6fa5)"><b>${pct(r.ag,r.tg)}</b>ගැහැණු පැමිණීම<br><small>නොපැමිණි ${r.ag} / ${r.tg}</small></div></div>`})()}
 function clsCards(){const by={};S.docs.forEach(x=>by[x.classId]=x);
- return `<div class="grid">${CLASSES.map(c=>{const x=by[c.id],a=x?x.absent.length:0;
-  return `<div class="fc k${x?"":" p"}" style="height:118px" tabindex="0" role="button" data-a="fl"><div class="fi"><div class="ff"><b>${c.name}</b><span>${x?pct(a,x.total)+" · "+a+" නොපැමිණි":"යවා නැත"}</span></div><div class="fb nm"><b>${c.name}</b>${x?(a?x.absent.map(s=>esc(s.name)).join("<br>"):"සියලු දෙනා පැමිණ ඇත"):"තවම යවා නැත"}</div></div></div>`}).join("")}</div>`}
+ return `<div class="grid">${CLASSES.map(c=>{const x=by[c.id],a=x?x.absent.length:0,g=x?gsplit([x]):null;
+  return `<div class="fc k${x?"":" p"}" style="height:136px" tabindex="0" role="button" data-a="fl"><div class="fi"><div class="ff"><b>${c.name}</b><span>${x?pct(a,x.total)+" · "+a+" නොපැමිණි<br><small>පිරිමි "+pctH(g.tb-g.ab,g.tb)+" · ගැහැණු "+pctH(g.tg-g.ag,g.tg)+"</small>":"යවා නැත"}</span></div><div class="fb nm"><b>${c.name}</b>${x?(a?x.absent.map(s=>esc(s.name)).join("<br>"):"සියලු දෙනා පැමිණ ඇත"):"තවම යවා නැත"}</div></div></div>`}).join("")}</div>`}
 
 function vStu(){return `<div class="card"><label>ලිංගභේදය<select id="gn"><option value="M">පිරිමි</option><option value="F">ගැහැණු</option></select></label><label>නම් ඇතුළත් කරන්න (පේළියකට එක නමක්)<textarea id="nn" rows="5"></textarea></label><button class="pri" data-a="addst">එකතු කරන්න</button></div>
  <div class="card" style="padding:0">${S.st.length?S.st.map((s,i)=>`<div class="st" style="cursor:default"><span>${i+1}</span><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="gnst" data-id="${s.id}" style="font-size:13px;font-weight:700;color:${s.gender=='M'?'#0b1f6b':s.gender=='F'?'#b0186b':'#c0392b'}" aria-label="ලිංගභේදය">${s.gender=='M'?'පිරිමි':s.gender=='F'?'ගැහැණු':'? තෝරන්න'}</button><button class="x" data-a="edst" data-id="${s.id}" aria-label="වෙනස් කරන්න">✎</button><button class="x" data-a="delst" data-id="${s.id}" aria-label="මකන්න">✕</button></div>`).join(""):'<p style="padding:14px">තවම සිසුන් නැත.</p>'}</div>`}
@@ -572,7 +572,12 @@ function repCharts(){const cur=S.role=="admin"?S.cls:S.cid,D=cur=="all"?S.docs:S
  const pc=(a,t)=>t?100-a/t*100:0,sm=L=>[L.reduce((s,x)=>s+x.total,0),L.reduce((s,x)=>s+x.absent.length,0)];let h="";
  if(cur=="all"){const by={};D.forEach(x=>(by[x.classId]=by[x.classId]||[]).push(x));
   const R=CLASSES.filter(c=>by[c.id]).map(c=>{const [t,a]=sm(by[c.id]),v=pc(a,t);return{n:"පන්තිය "+c.name,v,c:TC(v)}});
-  h+=`<div class="card"><h3>පන්ති අනුව පැමිණීම %</h3>${chHBar(R)}</div>`}
+  h+=`<div class="card"><h3>පන්ති අනුව පැමිණීම % — සියලු සිසුන්</h3>${chHBar(R)}</div>`;
+  const RB=[],RG=[];CLASSES.filter(c=>by[c.id]).forEach(c=>{const g=gsplit(by[c.id]);
+   if(g.tb){const v=100-g.ab/g.tb*100;RB.push({n:"පන්තිය "+c.name,v,c:TC(v)})}
+   if(g.tg){const v=100-g.ag/g.tg*100;RG.push({n:"පන්තිය "+c.name,v,c:TC(v)})}});
+  if(RB.length)h+=`<div class="card"><h3>පන්ති අනුව පැමිණීම % — පිරිමි</h3>${chHBar(RB)}</div>`;
+  if(RG.length)h+=`<div class="card"><h3>පන්ති අනුව පැමිණීම % — ගැහැණු</h3>${chHBar(RG)}</div>`}
  else if(S.p=="day"){const x=D[0],a=x.absent.length,p=x.total-a;
   h+=`<div class="card"><h3>පැමිණීම</h3>${donutBox([{v:p,c:"#2e9e6b"},{v:a,c:"#d9534f"}],f1(pc(a,x.total))+"%","පැමිණීම",[["#2e9e6b","පැමිණි "+p],["#d9534f","නොපැමිණි "+a]])}</div>`}
  {const r=gsplit(D),R=[];if(r.tb)R.push({n:"පිරිමි",v:100-r.ab/r.tb*100,c:"#0b1f6b"});if(r.tg)R.push({n:"ගැහැණු",v:100-r.ag/r.tg*100,c:"#d6336c"});
