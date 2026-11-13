@@ -388,7 +388,7 @@ function clsCards(){const by={};S.docs.forEach(x=>by[x.classId]=x);
   return `<div class="fc k${x?"":" p"}" style="height:156px" tabindex="0" role="button" data-a="fl"><div class="fi"><div class="ff"><b>${c.name}</b><span>${fr}</span>${gx}</div><div class="fb nm"><b>${c.name}</b>${bk}</div></div></div>`}).join("")}</div>`}
 
 function vStu(){return `<div class="card"><label>ලිංගභේදය<select id="gn"><option value="M">පිරිමි</option><option value="F">ගැහැණු</option></select></label><label>නම් ඇතුළත් කරන්න (පේළියකට එක නමක්)<textarea id="nn" rows="5"></textarea></label><button class="pri" data-a="addst">එකතු කරන්න</button></div>
- <div class="card" style="padding:0">${S.st.length?S.st.map((s,i)=>`<div class="st" style="cursor:default"><span>${i+1}</span><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="gnst" data-id="${s.id}" style="font-size:13px;font-weight:700;color:${s.gender=='M'?'#0b1f6b':s.gender=='F'?'#b0186b':'#c0392b'}" aria-label="ලිංගභේදය">${s.gender=='M'?'පිරිමි':s.gender=='F'?'ගැහැණු':'? තෝරන්න'}</button><button class="x" data-a="edst" data-id="${s.id}" aria-label="වෙනස් කරන්න">✎</button><button class="x" data-a="delst" data-id="${s.id}" aria-label="මකන්න">✕</button></div>`).join(""):'<p style="padding:14px">තවම සිසුන් නැත.</p>'}</div>`}
+ <div class="card" style="padding:0">${S.st.length?S.st.map((s,i)=>S.eid==s.id?`<div class="st" style="cursor:default;flex-wrap:wrap;gap:6px"><span>${i+1}</span><input id="en" value="${esc(s.name)}" style="flex:1;min-width:140px"><select id="eg" style="width:auto">${s.gender=="M"||s.gender=="F"?"":'<option value="">ලිංගභේදය තෝරන්න</option>'}<option value="M" ${s.gender=="M"?"selected":""}>පිරිමි</option><option value="F" ${s.gender=="F"?"selected":""}>ගැහැණු</option></select><button class="pri" data-a="svst" data-id="${s.id}" style="padding:6px 12px">සුරකින්න</button><button class="sec" data-a="cnst" style="padding:6px 12px">අවලංගුයි</button></div>`:`<div class="st" style="cursor:default"><span>${i+1}</span><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="gnst" data-id="${s.id}" style="font-size:13px;font-weight:700;color:${s.gender=='M'?'#0b1f6b':s.gender=='F'?'#b0186b':'#c0392b'}" aria-label="ලිංගභේදය">${s.gender=='M'?'පිරිමි':s.gender=='F'?'ගැහැණු':'? තෝරන්න'}</button><button class="x" data-a="edst" data-id="${s.id}" aria-label="වෙනස් කරන්න">✎</button><button class="x" data-a="delst" data-id="${s.id}" aria-label="මකන්න">✕</button></div>`).join(""):'<p style="padding:14px">තවම සිසුන් නැත.</p>'}</div>`}
 
 const WD=["ඉරිදා","සඳුදා","අඟහරුවාදා","බදාදා","බ්‍රහස්පතින්දා","සිකුරාදා","සෙනසුරාදා"];
 const wdOf=d=>WD[new Date(d+"T00:00").getDay()];
@@ -802,7 +802,10 @@ app.addEventListener("click",async e=>{const el=e.target.closest("[data-a]");if(
   const b=writeBatch(db),t=Date.now();L.forEach((n,i)=>b.set(doc(collection(db,"students")),{classId:S.cid,name:n,gender:$("#gn").value,order:t+i}));
   await b.commit();await loadSt();toast(L.length+" දෙනෙකු එක් කළා");return render()}
  if(a=="gnst"){const s=S.st.find(x=>x.id==id);await setDoc(doc(db,"students",id),{gender:s.gender=="M"?"F":"M"},{merge:true});await loadSt();render();return}
- if(a=="edst"){const s=S.st.find(x=>x.id==id),n=prompt("නම",s.name);if(n&&n.trim()){await setDoc(doc(db,"students",id),{name:n.trim()},{merge:true});await loadSt();render()}return}
+ if(a=="edst"){S.eid=id;render();return}
+ if(a=="cnst"){S.eid="";render();return}
+ if(a=="svst"){const n=($("#en").value||"").trim(),g=$("#eg").value;if(!n)return toast("නම ඇතුළත් කරන්න");const d={name:n};if(g)d.gender=g;
+  try{await setDoc(doc(db,"students",id),d,{merge:true});S.eid="";await loadSt();render();toast("සුරැකින ලදී ✓")}catch(x){toast("සුරැකීම අසාර්ථකයි")}return}
  if(a=="delst"){const s=S.st.find(x=>x.id==id);if(confirm(s.name+" ඉවත් කරන්නද?")){await deleteDoc(doc(db,"students",id));await loadSt();render()}return}
  if(a=="utog"){if(S.uca.has(id))return;S.uabs.has(id)?S.uabs.delete(id):S.uabs.add(id);el.classList.toggle("ab");$("#cnt").innerHTML=ucnt();return}
  if(a=="usend"){const L=uro(),ab=L.filter(x=>S.uabs.has(x.studentId)).map(x=>({id:x.studentId,name:x.name}));
