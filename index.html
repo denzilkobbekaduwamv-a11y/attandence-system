@@ -6,6 +6,10 @@
 <title>පාසල් පැමිණීම</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0b1f6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="පැමිණීම">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&family=Abhaya+Libre:wght@700;800&display=swap" rel="stylesheet">
@@ -103,6 +107,10 @@ header b{font-size:15px;line-height:1.35;min-width:0}header small{font-size:11px
 .fc .gg div{background:rgba(255,255,255,.22);border-radius:10px;padding:3px 2px;font-size:11px;line-height:1.35}
 .fc .gg b{display:block;font-size:13px}
 .fc .gu{font-size:11px;margin-top:4px}
+.fc .ti{font-size:11px;line-height:1.35;margin-top:6px;width:100%;opacity:.95}
+.fc .ti div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ib{position:fixed;left:12px;right:12px;bottom:12px;z-index:20;display:none;background:#fff;color:#1f2a44;border-radius:14px;padding:10px 12px;box-shadow:0 8px 26px rgba(0,0,0,.4);align-items:center;gap:10px;font-size:14px}
+#ib span{flex:1}
 .cgrid{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}.cgrid .card{margin:0}
 @media(min-width:700px){.cgrid{grid-template-columns:1fr 1fr}}
 @media print{.cgrid{grid-template-columns:1fr 1fr}.cgrid .card{break-inside:avoid}}
@@ -275,7 +283,8 @@ async function loadAtt(){const d=await getDoc(doc(db,"attendance",S.cid+"_"+S.da
 async function loadRep(){const [a,b]=range(S.p,S.rd);
  const q=S.role=="admin"?query(collection(db,"attendance"),where("date",">=",a),where("date","<=",b)):query(collection(db,"attendance"),where("classId","==",S.cid));
  const s=await getDocs(q);S.docs=s.docs.map(d=>d.data()).filter(x=>x.date>=a&&x.date<=b).sort((x,y)=>x.date<y.date?-1:1);S.rng=[a,b];await loadGen();render()}
-async function loadGen(){const L=(S.role=="admin"?CLASSES.map(c=>c.id):[S.cid]).filter(Boolean);S.gm={};S.gc={};
+async function loadGen(){const L=(S.role=="admin"?CLASSES.map(c=>c.id):[S.cid]).filter(Boolean);S.gm={};S.gc={};S.tn=S.tn||{};
+ if(S.role=="admin"){try{const us=await getDocs(collection(db,"users")),m={};us.docs.forEach(d=>{const u=d.data();if(u.role=="teacher"&&u.classId&&u.name)(m[u.classId]=m[u.classId]||[]).push(u.name)});S.tn=m}catch(e){console.error(e)}}else if(S.cid&&S.u){S.tn[S.cid]=[S.u.displayName].filter(Boolean)}
  try{const r=await Promise.all(L.map(id=>getDocs(query(collection(db,"students"),where("classId","==",id)))));
   r.forEach((q,i)=>{const c={M:0,F:0,U:0};q.docs.forEach(d=>{const g=d.data().gender,k=g=="M"||g=="F"?g:"U";c[k]++;S.gm[d.id]=k});S.gc[L[i]]=c})}catch(e){console.error(e)}}
 /* පිරිමි / ගැහැණු බෙදීම */
@@ -383,9 +392,11 @@ function clsCards(){const by={};S.docs.forEach(x=>by[x.classId]=x);
  return `<div class="grid">${CLASSES.map(c=>{const x=by[c.id],a=x?x.absent.length:0,g=x?gsplit([x]):null;
   const gb=(l,col,t,ab)=>`<div><i style="color:${col};font-style:normal">●</i> ${l}<b>${t-ab} / ${t}</b>${t?pct(ab,t):"-"}</div>`;
   const fr=x?`${pct(a,x.total)} · ${a} නොපැමිණි`:"යවා නැත";
-  const gx=x?`<div class="gg">${gb("පිරිමි",GC.M,g.tb,g.ab)}${gb("ගැහැණු",GC.F,g.tg,g.ag)}</div>${g.tu?`<div class="gu">⚠ ලිංගභේදය නොදන්නා: ${g.tu}</div>`:""}`:"";
+  const tot=(S.gc||{})[c.id]?(S.gc[c.id].M+S.gc[c.id].F+S.gc[c.id].U):(x?x.total:0),tn=(S.tn||{})[c.id]||[],
+    ti=`<div class="ti"><div>👥 මුළු ළමුන්: <b style="display:inline;font-size:12px">${tot}</b></div><div>👩‍🏫 ${tn.length?esc(tn.join(" / ")):"ගුරුවරයා: -"}</div></div>`;
+   const gx=x?`<div class="gg">${gb("පිරිමි",GC.M,g.tb,g.ab)}${gb("ගැහැණු",GC.F,g.tg,g.ag)}</div>${g.tu?`<div class="gu">⚠ ලිංගභේදය නොදන්නා: ${g.tu}</div>`:""}`:"";
   const bk=x?(a?sec(x,"M","පිරිමි")+sec(x,"F","ගැහැණු")+sec(x,"U","නොදන්නා"):"සියලු දෙනා පැමිණ ඇත"):"තවම යවා නැත";
-  return `<div class="fc k${x?"":" p"}" style="height:156px" tabindex="0" role="button" data-a="fl"><div class="fi"><div class="ff"><b>${c.name}</b><span>${fr}</span>${gx}</div><div class="fb nm"><b>${c.name}</b>${bk}</div></div></div>`}).join("")}</div>`}
+  return `<div class="fc k${x?"":" p"}" style="height:196px" tabindex="0" role="button" data-a="fl"><div class="fi"><div class="ff"><b>${c.name}</b><span>${fr}</span>${gx}${ti}</div><div class="fb nm"><b>${c.name}</b>${bk}</div></div></div>`}).join("")}</div>`}
 
 function vStu(){return `<div class="card"><label>ලිංගභේදය<select id="gn"><option value="M">පිරිමි</option><option value="F">ගැහැණු</option></select></label><label>නම් ඇතුළත් කරන්න (පේළියකට එක නමක්)<textarea id="nn" rows="5"></textarea></label><button class="pri" data-a="addst">එකතු කරන්න</button></div>
  <div class="card" style="padding:0">${S.st.length?S.st.map((s,i)=>S.eid==s.id?`<div class="st" style="cursor:default;flex-wrap:wrap;gap:6px"><span>${i+1}</span><input id="en" value="${esc(s.name)}" style="flex:1;min-width:140px"><select id="eg" style="width:auto">${s.gender=="M"||s.gender=="F"?"":'<option value="">ලිංගභේදය තෝරන්න</option>'}<option value="M" ${s.gender=="M"?"selected":""}>පිරිමි</option><option value="F" ${s.gender=="F"?"selected":""}>ගැහැණු</option></select><button class="pri" data-a="svst" data-id="${s.id}" style="padding:6px 12px">සුරකින්න</button><button class="sec" data-a="cnst" style="padding:6px 12px">අවලංගුයි</button></div>`:`<div class="st" style="cursor:default"><span>${i+1}</span><span style="flex:1">${esc(s.name)}</span><button class="x" data-a="gnst" data-id="${s.id}" style="font-size:13px;font-weight:700;color:${s.gender=='M'?'#0b1f6b':s.gender=='F'?'#b0186b':'#c0392b'}" aria-label="ලිංගභේදය">${s.gender=='M'?'පිරිමි':s.gender=='F'?'ගැහැණු':'? තෝරන්න'}</button><button class="x" data-a="edst" data-id="${s.id}" aria-label="වෙනස් කරන්න">✎</button><button class="x" data-a="delst" data-id="${s.id}" aria-label="මකන්න">✕</button></div>`).join(""):'<p style="padding:14px">තවම සිසුන් නැත.</p>'}</div>`}
@@ -876,7 +887,16 @@ async function boot(u){
  try{if(S.tab)await go(S.tab)}catch(x){console.error(x)}}
 onAuthStateChanged(auth,u=>{if(regBusy)return;boot(u)});
 
-if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(e=>console.error("SW",e)));
+/* Install prompt */
+let dip=null;const ib=document.createElement("div");ib.id="ib";ib.innerHTML='<span></span><button class="pri" id="ibi">Install</button><button class="x" id="ibx" aria-label="close">✕</button>';document.body.appendChild(ib);
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+const showIb=(t,btn)=>{if(standalone)return;try{if(sessionStorage.getItem("ibx"))return}catch{}ib.firstChild.textContent=t;document.getElementById("ibi").style.display=btn?"":"none";ib.style.display="flex"};
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();dip=e;showIb("මෙම ඇප් එක දුරකතනයට Install කරන්න",true)});
+window.addEventListener("appinstalled",()=>{ib.style.display="none";dip=null});
+document.getElementById("ibi").onclick=async()=>{if(!dip)return;dip.prompt();await dip.userChoice;dip=null;ib.style.display="none"};
+document.getElementById("ibx").onclick=()=>{ib.style.display="none";try{sessionStorage.setItem("ibx","1")}catch{}};
+if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!standalone)setTimeout(()=>showIb("iPhone: Safari හි Share ⬆ → “Add to Home Screen” ඔබන්න",false),2500);
 </script>
 </body>
 </html>
